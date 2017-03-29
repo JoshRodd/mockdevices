@@ -1,0 +1,141 @@
+#!/bin/bash
+
+scriptname=ifconfig-loopbacks
+version=0.1
+if [ "$1" == "--help" ]; then
+	cat <<EOF
+Usage: $0 [OPTION]...
+Configure the loopback interface with a large number of alias addresses.
+
+-alias, --unalias	remove the aliases instead of adding them
+--interface=if, -i if	use the interface \`if' instead of the default
+			interface \`$ifname'
+-f, --force		adds the aliases back even if they seem to already
+			exist
+--subnet=a.b.2.0[/23]	uses the subnet a.b.2.0/23 instead of 127.200.2/23
+-n, --dry-run		show the commands that would be executed instead of
+			actually executing them
+    --help		display this help and exit
+    --version		output version information ($version) and exit
+
+The addresses assigned will be in the subnet 127.200.2.0/23 and will range
+from 127.200.2.2 - 127.200.2.251 and 127.200.3.2 - 127.200.3.251, for a
+total of 500 addresses. You will need to run as a user which has permission to
+run the \`ifconfig' command against the selected interface.
+EOF
+	exit 0
+elif [ "$1" == "--version" ]; then
+	echo "ifconfig-loopbacks $version"
+	exit 0
+fi
+
+a=127
+b=200
+c=2
+d=0
+e=23
+
+ifname=lo0
+dryrun=""
+unalias=""
+UNAME=$(uname) || exit
+if [ "$UNAME" == "Darwin" ]; then ifname=lo0;
+elif [ "$UNAME" == "Linux" ]; then ifname=lo;
+else
+	echo "Warning: the $UNAME platform is not supported." >&2
+fi
+while [ "$1" != "" ]; do
+	if [ "$1" == "-alias" -o "$1" == "--alias" ]; then
+		unalias=1
+		shift
+	elif [ "$1" == "--force" -o "$1" == "-f" ]; then
+		force=1
+		shift
+	elif [ "${1:0:11}" == "--interface=" ]; then
+		ifname=${1:9}
+		shift
+	elif [ "$1" == "-i" ]; then
+		if [ "$1" != "" ]; then
+			ifname="$1"
+			shift
+		else
+			echo "Missing interface name to \`-i' option." >&2
+		fi
+	elif [ "$1" == "--dry-run" -o "$1" == "-n" ]; then
+		dryrun=1
+		shift
+	elif [ "${1:0:9}" == "--subnet=" ]; then
+		subnet=${1:9}
+		OLD_IFS="$IFS"
+		IFS="./"
+		read a b c d e < <(printf "%s" "$subnet")
+		IFS="$OLD_IFS"
+		if [ "$e" = "" ]; then e=23; fi
+		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 254 -o \
+			"$b" -ne "$b" -o "$b" -lt 0 -o "$b" -gt 254 -o \
+			"$c" != $[$c / 2 * 2] -o "$c" -lt 0 -o "$c" -gt 254 -o \
+			"$d" != "0" -o \
+			"$e" != "23" ]; then
+			echo "Invalid subnet \`$subnet'" >&2
+			exit 1
+		fi
+		shift
+		echo $subnet $a $b $c $d $e
+	else
+		echo "Invalid parameter \`$1'" >&2
+		exit 1
+	fi
+done
+
+progress=""
+if [ -t 0 -a -t 1 ]; then
+	progress=1
+fi
+
+cstart="$c"
+cend=$[$cstart + 1]
+dstart=2
+dend=251
+
+total=$[($dend - $dstart + 1) * ($cend - $cstart + 1)]
+counter=0
+
+netmask=255.255.255.255
+hexnetmask=0xffffffff
+
+progressshown=""
+
+for c in $(seq $cstart $cend); do
+	for d in $(seq $dstart $dend); do
+		ifaddr=$a.$b.$c.$d
+		read existingifaddr
+		if [ "$ifaddr" != "$existingifaddr" -o "$force" ]; then
+			if [ "$dryrun" ]; then
+				echo ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255
+			else
+				ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255 2>/dev/null
+			fi
+			if [ ! "$unalias" ]; then
+				if [ "$dryrun" ]; then
+					echo ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
+				else
+					ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
+				fi
+				rc=$?
+				if [ $rc -gt 0 ]; then
+					echo Cannot alias lo0 $ifaddr\; are you root\?
+					exit $rc
+				fi
+			fi
+			if [ "$progress" -a ! "$dryrun" ]; then
+				progressshown=1
+				counter=$[$counter + 1]
+				echo -n -e "\r$[100 * $counter / $total]% ... "
+			fi
+		fi
+	done
+done < <(ifconfig lo0 | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4)
+
+if [ "$progress" -a "$progressshown" ]; then
+	echo -e "\r100% completed"
+fi
