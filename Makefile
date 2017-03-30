@@ -15,20 +15,21 @@ bin/asabin:	asabin.c Makefile
 	$(CC) $(CFLAGSO) asabin.c -o bin/asabin
 	strip bin/asabin
 
-install:	bin/asabin asash test Makefile
+install:	bin/asabin asash Makefile
 	install -m 755 bin/asabin "$(PREFIX)/bin"
 	install -m 755 asash "$(PREFIX)/bin"
 	install -m 755 asamock.py "$(PREFIX)/bin"
 	install -m 755 ifconfig-loopbacks "$(PREFIX)/bin"
 
-commit:	test clean Makefile
+commit:	test install clean Makefile
 	git commit --all
 
 clean:
 	rm -f asabin asabin.o
 	rm -rf asabin.dSYM bin
 
-test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile ./asamock.py
+# Tests don't work unless it's fully installed.
+test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile ./asamock.py install
 	./asabin-test.sh asabin
 	./asabin-test.sh bin/asabin
 	./ifconfig-loopbacks-test.sh ifconfig-loopbacks
