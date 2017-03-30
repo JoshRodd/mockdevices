@@ -1,0 +1,46 @@
+admin@127.200.2.2's password: adminpass
+
+#########################################################################################
+#                                                                                       #
+# This is where you normally expect to see some kind of legal notice about acceptable   #
+# use. The text inside this is normally ignored.                                        #
+#                                                                                       #
+# {}
+#                                                                                       #
+#########################################################################################
+Type help or '?' for a list of available commands.
+^MFW1> enable
+enable
+Password: enablepass
+**********
+^MFW1# terminal pager 0
+terminal pager 0
+^MFW1# show version | i Software Version
+show version | i Software Version
+Cisco Adaptive Security Appliance Software Version 9.1(7)13
+^MFW1# show cpu
+show cpu
+CPU utilization for 5 seconds = 7%; 1 minute: 4%; 5 minutes: 3%
+^MFW1# show mem | i Free
+show mem | i Free
+Free memory:        3170655799 bytes (74%)
+^MFW1# show run access-group | i TEST_ACL1
+show run access-group | i TEST_ACL1
+^MFW1# show object-group id SCW_12345_svc_AR1
+show object-group id SCW_12345_svc_AR1
+object-group service SCW_12345_svc_AR1
+ service-object tcp destination range 1000 10000
+ service-object udp destination eq domain
+ service-object udp destination range 1000 10000
+^MFW1# show object-group id SCW_12345_src_AR1
+show object-group id SCW_12345_src_AR1
+object-group network SCW_12345_src_AR1
+ network-object 10.10.10.2 255.255.255.255
+ network-object 10.0.0.1 255.0.0.255
+^MFW1# show object-group id SCW_12345_dst_AR1
+show object-group id SCW_12345_dst_AR1
+object-group network SCW_12345_dst_AR1
+ network-object host 10.1.1.1
+^MFW1# show run access-list TEST_ACL1 | i ermit object-group SCW_12345_svc_AR1 object-group SCW_12345_src_AR1 object-group SCW_12345_dst_AR1
+show run access-list TEST_ACL1 | i ermit object-group SCW_12345_svc_AR1 object-group SCW_12345_src_AR1 object-group SCW_12345_dst_AR1
+^MFW1# exit
