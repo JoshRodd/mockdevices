@@ -5,7 +5,7 @@ CFLAGSO=-O4 -Oz -Ofast -DNDEBUG
 CFLAGS=-g -O0 -DDEBUG
 PREFIX=/usr/local
 
-all:	test asabin ifconfig-loopbacks Makefile
+all:	test asabin asash asamock.py ifconfig-loopbacks Makefile
 
 asabin:	asabin.c Makefile
 	$(CC) $(CFLAGS) asabin.c -o asabin
@@ -18,6 +18,7 @@ bin/asabin:	asabin.c Makefile
 install:	bin/asabin asash test Makefile
 	install -m 755 bin/asabin "$(PREFIX)/bin"
 	install -m 755 asash "$(PREFIX)/bin"
+	install -m 755 asamock.py "$(PREFIX)/bin"
 	install -m 755 ifconfig-loopbacks "$(PREFIX)/bin"
 
 commit:	test clean Makefile
@@ -27,9 +28,10 @@ clean:
 	rm -f asabin asabin.o
 	rm -rf asabin.dSYM bin
 
-test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile
+test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile ./asamock.py
 	./asabin-test.sh asabin
 	./asabin-test.sh bin/asabin
 	./ifconfig-loopbacks-test.sh ifconfig-loopbacks
+#	./asamock.py
 
 $(DEBUG).SILENT:	test
