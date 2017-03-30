@@ -10,7 +10,7 @@ if [ ! -x "$ASABIN" ]; then
 	exit 1
 fi
 
-"$ASABIN" | grep -qe "Welcome to the fake ASA shell, asash"
+SSH_CONNECTION="::1 12345 ::1 22" "$ASABIN" | fgrep -qe "##################################################"
 rc=$?
 
 if [ "$rc" != "0" ]; then
