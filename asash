@@ -1,8 +1,3 @@
 #!/bin/bash
 
-echo Welcome to the fake ASA shell, asash
-echo
-echo Your connection is $SSH_CONNECTION
-echo $SSH_CONNECTION | read client_ip client_port server_ip server_port
-echo $server_ip $server_port
-pwd
+exec -a asash /Users/josh/Documents/src/mockdevices/asamock.py "$@"
