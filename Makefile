@@ -1,8 +1,8 @@
 # mockdevices/Makefile
 
 CC=cc
-CFLAGSO=-O4 -Oz -Ofast
-CFLAGS=-g -O0
+CFLAGSO=-O4 -Oz -Ofast -DNDEBUG
+CFLAGS=-g -O0 -DDEBUG
 PREFIX=/usr/local
 
 all:	test asabin ifconfig-loopbacks Makefile
@@ -21,7 +21,7 @@ install:	bin/asabin asash test Makefile
 	install -m 755 ifconfig-loopbacks "$(PREFIX)/bin"
 
 commit:	test clean Makefile
-	git commit
+	git commit --all
 
 clean:
 	rm -f asabin asabin.o
@@ -31,3 +31,5 @@ test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bi
 	./asabin-test.sh asabin
 	./asabin-test.sh bin/asabin
 	./ifconfig-loopbacks-test.sh ifconfig-loopbacks
+
+$(DEBUG).SILENT:	test
