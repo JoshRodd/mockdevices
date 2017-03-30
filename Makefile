@@ -23,6 +23,7 @@ install:	bin/asabin asash Makefile
 
 commit:	test install clean Makefile
 	git commit --all
+	git push
 
 clean:
 	rm -f asabin asabin.o
