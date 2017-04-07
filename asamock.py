@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import os, re, getpass, ipaddress, sys
+import os, re, getpass, ipaddress, sys, locale
+from datetime import datetime, timezone
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
 HOST_PREFIX = 'Asa-'
@@ -46,6 +47,7 @@ sys.stdout.flush()
 
 in_enable=False
 cur_prompt='>'
+no_more=False
 
 while True:
     print('\r{}{} '.format(local_hostname, cur_prompt), end='')
@@ -60,15 +62,46 @@ while True:
         else:
             in_enable=True
             cur_prompt='#'
-    elif ln == 'exit\n':
+    elif ln in ('exit\n', 'logout\n', 'quit\n'):
         break
     elif ln == 'terminal pager 0\n':
+        no_more=True
         pass
+    elif ln == 'show cpu | i util\n':
+        print('CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%')
+    elif ln == 'show clock\n':
+        locale.setlocale(locale.LC_TIME, "C")
+        print("{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc)))
+    elif ln == 'show mem\n':
+        print('''\
+Free memory:        1441865728 bytes (67%)
+Used memory:         705617920 bytes (33%)
+-------------     ------------------
+Total memory:       2147483648 bytes (100%)
+
+Virtual platform memory
+-----------------------
+Provisioned       2048 MB
+Allowed              0 MB
+Status            Noncompliant: Over-provisioned
+''', end='')
     elif ln == 'show version | i Software Version\n':
         print('''\
 Cisco Adaptive Security Appliance Software Version 9.1(7)13
 ''', end='');
         flush()
+    elif ln == 'show cpu\n':
+        print('''\
+CPU utilization for 5 seconds = 2%; 1 minute: 0%; 5 minutes: 0%
+
+Virtual platform CPU resources
+------------------------------
+Number of vCPUs              :     1
+Number of allowed vCPUs      :     0
+vCPU Status                  :  Noncompliant: Over-provisioned
+''', end='');
+    elif ln == 'show ipv6 access-list\n':
+        pass
     else:
         print('''         ^
 ERROR: % Invalid input detected at '^' marker.''')
