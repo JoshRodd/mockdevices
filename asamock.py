@@ -55,8 +55,8 @@ while True:
         print('\rPassword: ', end='')
         flush()
         enablepasswordln = sys.stdin.readline()
-        if format('{}'\n', enable_password) != enablepasswordln:
-            
+        if '{}\n'.format(enable_password) != enablepasswordln:
+            print('Invalid password.')
         else:
             in_enable=True
             cur_prompt='#'

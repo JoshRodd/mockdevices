@@ -10,7 +10,7 @@ if [ ! -x "$ASABIN" ]; then
 	exit 1
 fi
 
-SSH_CONNECTION="::1 12345 ::1 22" "$ASABIN" | fgrep -qe "##################################################"
+SSH_CONNECTION="::1 12345 ::1 22" echo exit | "$ASABIN" | fgrep -qe "##################################################"
 rc=$?
 
 if [ "$rc" != "0" ]; then
