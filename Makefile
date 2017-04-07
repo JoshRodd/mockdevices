@@ -31,8 +31,8 @@ clean:
 
 # Tests don't work unless it's fully installed.
 test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile ./asamock.py install
-	./asabin-test.sh asabin
-	./asabin-test.sh bin/asabin
+	echo enable | ./asabin-test.sh asabin
+	echo enable | ./asabin-test.sh bin/asabin
 	./ifconfig-loopbacks-test.sh ifconfig-loopbacks
 #	./asamock.py
 
