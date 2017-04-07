@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, re, getpass, ipaddress
+import os, re, getpass, ipaddress, sys
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
 HOST_PREFIX = 'Asa-'
@@ -33,3 +33,9 @@ print(\
 ##############################################################################
 Type help or '?' for a list of available commands.
 ''' + '\r{}> '.format(local_hostname), end='')
+sys.stdout.flush()
+ln = sys.stdin.readline()
+if ln == 'enable\n':
+    print('ok')
+else:
+    print('invalid command')
