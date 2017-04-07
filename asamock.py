@@ -21,9 +21,8 @@ if isinstance(local_ip_addr, ipaddress.IPv6Address):
 local_ip_addr_str = str(local_ip_addr).replace('.','_')
 local_hostname = host_prefix + local_ip_addr_str
 
-print(\
-'{}@{}\'s password: {}'.format(local_user, local_ip_addr, local_password) + '''
-
+#print(# '{}@{}\'s password: {}'.format(local_user, local_ip_addr, local_password) + '''
+print('''
 ##############################################################################
 #                                                                            #
 # A typical banner or legal notice goes here.                                #
@@ -32,10 +31,18 @@ print(\
 #                                                                            #
 ##############################################################################
 Type help or '?' for a list of available commands.
-''' + '\r{}> '.format(local_hostname), end='')
+''');
 sys.stdout.flush()
-ln = sys.stdin.readline()
-if ln == 'enable\n':
-    print('ok')
-else:
-    print('invalid command')
+
+while True:
+    print('\r{}> '.format(local_hostname), end='')
+    sys.stdout.flush()
+    ln = sys.stdin.readline()
+    if ln == 'enable\n':
+        print('ok')
+    elif ln == 'exit\n':
+        break
+    else:
+        print('invalid command')
+print('bye')
+sys.exit(0)
