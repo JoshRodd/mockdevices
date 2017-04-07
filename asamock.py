@@ -5,14 +5,16 @@ import os, re, getpass, ipaddress, sys
 SSH_CONN_KEY = 'SSH_CONNECTION'
 HOST_PREFIX = 'Asa-'
 host_prefix = HOST_PREFIX
-remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
-ssh_conn = os.environ[SSH_CONN_KEY]
-ssh_conn_l = os.environ[SSH_CONN_KEY].split()
-if len(ssh_conn_l) != 4:
-    raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
-remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
+try:
+    ssh_conn = os.environ[SSH_CONN_KEY]
+    ssh_conn_l = os.environ[SSH_CONN_KEY].split()
+    if len(ssh_conn_l) != 4:
+       raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
+    remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
+except KeyError:
+    remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
 local_user = getpass.getuser()
-local_password = 'joshpass'
+enable_password = 'asapass'
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
 if isinstance(local_ip_addr, ipaddress.IPv6Address):
     if local_ip_addr == ipaddress.IPv6Address('::1'):
@@ -28,7 +30,6 @@ def flush():
     except:
         pass
 
-#print(# '{}@{}\'s password: {}'.format(local_user, local_ip_addr, local_password) + '''
 print('''\
 
 ##############################################################################
@@ -43,6 +44,7 @@ Type help or '?' for a list of available commands.
 ''', end='');
 sys.stdout.flush()
 
+in_enable=False
 cur_prompt='>'
 
 while True:
@@ -50,10 +52,14 @@ while True:
     flush()
     ln = sys.stdin.readline()
     if ln == 'enable\n':
-        cur_prompt='#'
         print('\rPassword: ', end='')
         flush()
         enablepasswordln = sys.stdin.readline()
+        if format('{}'\n', enable_password) != enablepasswordln:
+            
+        else:
+            in_enable=True
+            cur_prompt='#'
     elif ln == 'exit\n':
         break
     elif ln == 'terminal pager 0\n':
