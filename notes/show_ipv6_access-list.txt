@@ -1,0 +1,2 @@
+asav-1# show ipv6 access-list
+asav-1#

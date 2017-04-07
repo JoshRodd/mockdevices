@@ -1,0 +1,17 @@
+DONE sent enable
+DONE sent enable password
+sent 'show running config'
+sent 'show access-list'
+sent 'show ipv6 access-list'
+DONE sent 'show clock'
+sent 'show version'
+DONE sent 'logout' or 'quit' or 'exit'
+extras
+DONE show cpu
+DONE show mem
+DONE show cpu | i util
+dyn data - ignore:
+show name
+show route
+show route management-only
+show interface

@@ -1,0 +1,12 @@
+asav-1# show mem
+Free memory:        1441865728 bytes (67%)
+Used memory:         705617920 bytes (33%)
+-------------     ------------------
+Total memory:       2147483648 bytes (100%)
+
+Virtual platform memory
+-----------------------
+Provisioned       2048 MB
+Allowed              0 MB
+Status            Noncompliant: Over-provisioned
+asav-1#
