@@ -25,6 +25,7 @@ uninstall:
 	rm -f /opt/local/bin/asamock.py
 
 install:	bin/asabin asash Makefile
+	mkdir -p "$(PREFIX)/bin"
 	install -m 755 bin/asabin "$(PREFIX)/bin"
 	install -m 755 asash "$(PREFIX)/bin"
 	install -m 755 asamock.py "$(PREFIX)/bin"
