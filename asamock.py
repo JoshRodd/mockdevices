@@ -5,6 +5,7 @@ import os, re, getpass, ipaddress, sys
 SSH_CONN_KEY = 'SSH_CONNECTION'
 HOST_PREFIX = 'Asa-'
 host_prefix = HOST_PREFIX
+remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
 ssh_conn = os.environ[SSH_CONN_KEY]
 ssh_conn_l = os.environ[SSH_CONN_KEY].split()
 if len(ssh_conn_l) != 4:
@@ -21,8 +22,15 @@ if isinstance(local_ip_addr, ipaddress.IPv6Address):
 local_ip_addr_str = str(local_ip_addr).replace('.','_')
 local_hostname = host_prefix + local_ip_addr_str
 
+def flush():
+    try:
+        sys.stdout.flush()
+    except:
+        pass
+
 #print(# '{}@{}\'s password: {}'.format(local_user, local_ip_addr, local_password) + '''
-print('''
+print('''\
+
 ##############################################################################
 #                                                                            #
 # A typical banner or legal notice goes here.                                #
@@ -31,18 +39,37 @@ print('''
 #                                                                            #
 ##############################################################################
 Type help or '?' for a list of available commands.
-''');
+
+''', end='');
 sys.stdout.flush()
 
+cur_prompt='>'
+
 while True:
-    print('\r{}> '.format(local_hostname), end='')
-    sys.stdout.flush()
+    print('\r{}{} '.format(local_hostname, cur_prompt), end='')
+    flush()
     ln = sys.stdin.readline()
     if ln == 'enable\n':
-        print('ok')
+        cur_prompt='#'
+        print('\rPassword: ', end='')
+        flush()
+        enablepasswordln = sys.stdin.readline()
     elif ln == 'exit\n':
         break
+    elif ln == 'terminal pager 0\n':
+        pass
+    elif ln == 'show version | i Software Version\n':
+        print('''\
+Cisco Adaptive Security Appliance Software Version 9.1(7)13
+''', end='');
+        flush()
     else:
-        print('invalid command')
-print('bye')
+        print('''         ^
+ERROR: % Invalid input detected at '^' marker.''')
+        flush()
+print('''\
+
+Logoff
+
+''',end='')
 sys.exit(0)
