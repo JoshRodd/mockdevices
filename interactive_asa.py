@@ -28,6 +28,7 @@
 """
 import re
 from collections import defaultdict
+import binascii
 # import pprint
 
 
@@ -51,7 +52,7 @@ class ASA:
                         '(?P<dst>(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} '
                         '([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<dst_group>\S+)|any?)( '
+                        '(?P<dst_group>\S+)|any)( '
                         '(?P<svc_type>(eq |gt |range |object-group )'
                         '(?P<svc>.+)$))?)?')
 
@@ -148,8 +149,9 @@ class ASA:
             return self.return_invalid_input()
 
     def exit(self, cmd):
-        if self.prompt:
-            self.prompt.pop()
+        if self.prompt_level:
+            print(self.prompt_level)
+            self.prompt_level.pop()
         else:
             return 1
 
@@ -256,7 +258,7 @@ class ASA:
         pass
 
     def no(self, command):
-        new_config = self.config
+        new_config = self.config[:]
         self.prompt_level = ['config']
         self.current_object_group = False
         command = re.sub('line \d+ ', '', command.rstrip())
@@ -278,12 +280,18 @@ class ASA:
             if obj_id_match.group('name') in self.bound_object_groups:
                 return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
 
-        for line in self.config:
+        for index, line in enumerate(self.config):
             if section and re.search('^\s+\S', line):
-                new_config.remove(line)
+                print('removing' + line + '|')
+                new_config.pop(remove)
+                if line in new_config:
+                    print(line + 'wasnt removed')
+                continue
             elif command.replace('no ', '').strip() in line.strip():
-                new_config.remove(line)
+                remove = index
+                new_config.pop(remove)
                 section = True
+                continue
             elif section:
                 break
         if section:
@@ -308,6 +316,7 @@ class ASA:
         o = self.object_group_re.search(line)
 
         if not o or not self.prompt_level or (self.prompt_level and self.prompt_level[0] != 'config'):
+            print(self.prompt_level)
             return self.return_invalid_input()
 
         if o:
@@ -321,7 +330,7 @@ class ASA:
                 self.prompt_level = [self.prompt_level[0], 'config-network-object-group']
             self.current_object_group = o.group('name')
             if o.group('name') not in self.object_groups:
-                new_config = self.config
+                new_config = self.config[:]
                 obj = False
                 for n, l in enumerate(self.config):
                     if re.search('^object-group', l):
@@ -336,10 +345,11 @@ class ASA:
             else:
                 self.current_line = next((i for i, j in enumerate(self.config) if line in j)) + 1
         else:
+            print(line)
             return self.return_invalid_input()
 
     def object_group_element(self, line):
-        new_config = self.config
+        new_config = self.config[:]
         p = self.port_object_re.search(line)
         n = self.network_object_re.search(line)
         i = self.icmp_object_re.search(line)
@@ -357,16 +367,17 @@ class ASA:
             if {j: s.group(j) for j in s.groupdict()} in self.object_groups[self.current_object_group]:
                 return 'Adding obj ({} ) to grp ({}) failed; object already exists'.format(line.rstrip(), self.current_object_group)
         else:
+            print(line)
             return self.return_invalid_input()
 
         new_config.insert(self.current_line, line)
         self.current_line += 1
-        self.config = new_config
+        self.config = new_config[:]
         self.update_config_file()
         self.update_dicts(self.config)
 
     def access_list(self, line):
-        new_config = self.config
+        new_config = self.config[:]
         section = False
         asection = False
         a = self.acl_re.search((line))
@@ -408,14 +419,14 @@ class ASA:
             return 'WARNING: <{}> found duplicate element'.format(a.group('name'))
 
         self.current_object_group = False
-        self.config = new_config
+        self.config = new_config[:]
         self.update_config_file()
         self.update_dicts(self.config)
 
     commands = [
-        (r'^\s*sho?w? access-li?s?t?\S*( (?P<access_list>\S+)?)', show_access_list),
+        (r'^\s*sho?w? access-li?s?t?\S*( (?P<access_list>\S+))?', show_access_list),
         (r'^\s*sho?w? ipv6? a', show_ipv6_access_list),
-        (r'^\s*sho?w? object-g?r?o?u?p?\S*( (?P<group_id>\S+)?)', show_object_group),
+        (r'^\s*sho?w? object-g?r?o?u?p?( \S+ (?P<group_id>\S+))?', show_object_group),
         (r'^\s*sho?w? runi?n?g?-?c?o?n?f?i?g?', show_run),
         (r'^\s*end', end),
         (r'^\s*ena?b?l?e?', enable),
@@ -430,16 +441,18 @@ class ASA:
     def send(self, command):
         valid = False
         for k, c in self.commands:
-            m = re.match(k, command)
+            m = re.search(k, command)
             if m:
+                print('function: "{}"'.format(c.__name__))
                 func = c
                 args = m.groupdict()
                 valid = True
                 return func(self, command, **args)
         if not valid:
-            print(command)
+            print(' send error: "{}"'.format(command))
             return self.return_invalid_input()
 
 
 def asa_hash(ace):
-    return '0x{:02x}'.format(hash(ace) % pow(2, 32))
+    return str(hex(binascii.crc32(ace.encode())))
+    # return '0x{:02x}'.format(hash(ace) % pow(2, 32))
