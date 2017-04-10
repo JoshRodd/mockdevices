@@ -22,7 +22,7 @@ def get_config_str():
 
 SENDS = [
     (
-        'test_enable',
+        'enable',
         ('enable\n',),
         None,
         operator.eq,
@@ -32,7 +32,7 @@ SENDS = [
     ),
 
     (
-        'test_config_t',
+        'config_t',
         ('config terminal\n',),
         None,
         operator.eq,
@@ -42,7 +42,7 @@ SENDS = [
     ),
 
     (
-        'test_show_run',
+        'show_run',
         ('show runnning-config\n',),
         SHOW_RUN,
         None,
@@ -52,7 +52,7 @@ SENDS = [
     ),
 
     (
-        'test_exit',
+        'exit',
         ('exit',),
         1,
         None,
@@ -62,7 +62,7 @@ SENDS = [
     ),
 
     (
-        'test_show_access_list',
+        'show_access_list',
         ('show access-list\n',),
         '''\,
         ''',
@@ -73,7 +73,7 @@ SENDS = [
     ),
 
     (
-        'test_show_access_list_name',
+        'show_access_list_name',
         ('show access-list outside-in\n',),
         '''\
         ''',
@@ -84,7 +84,7 @@ SENDS = [
     ),
 
     (
-        'test_show_object_group',
+        'show_object_group',
         ('show object-group\n',),
         '''\
 object-group network INTERNAL_USERS
@@ -152,7 +152,7 @@ object-group network SCW_12345_dst_AR2
     ),
 
     (
-        'test_show_object_group_id',
+        'show_object_group_id',
         ('show object-group id MPI_SERVICES',),
         '''\
 object-group service MPI_SERVICES
@@ -169,7 +169,7 @@ object-group service MPI_SERVICES
     ),
 
     (
-        'test_add_object_group',
+        'add_object_group_network',
         ('object-group network ENCLAVE_MAIL_SERVERS_2\n',
          ' network-object 10.101.51.0 255.255.255.0\n',
          ' network-object 10.101.53.0 255.255.255.0\n',
@@ -192,7 +192,7 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
-        'test_add_access_list',
+        'add_access_list',
         ('access-list MPE-in extended permit object-group MPE_SERVICES '
          'object-group INTERNAL_MPI_SERVERS object-group ENCLAVE_MAIL_SERVERS_2\n',),
         None,
@@ -203,9 +203,9 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
-        'test_no_object_group_in_used',
+        'no_object_group_in_use',
         ('no object-group network ENCLAVE_MAIL_SERVERS_2\n',),
-        'cant remove it, blah blah blah',
+        'Removing object-group (ENCLAVE_MAIL_SERVERS_2) not allowed, it is being used.',
         operator.contains,
         True,
         '''\
@@ -220,7 +220,7 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
-        'test_no_access_list',
+        'no_access_list',
         ('no access-list MPE-in extended permit object-group MPE_SERVICES '
          'object-group INTERNAL_MPI_SERVERS object-group ENCLAVE_MAIL_SERVERS_2\n',),
         None,
@@ -232,10 +232,77 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
-        'test_add_bogus_access-list',
+        'no_object_group',
+        ('no object-group network ENCLAVE_MAIL_SERVERS_2\n',),
+        None,
+        operator.contains,
+        False,
+        '''\
+object-group network ENCLAVE_MAIL_SERVERS_2
+ network-object 10.101.51.0 255.255.255.0
+ network-object 10.101.53.0 255.255.255.0
+ network-object 10.101.55.0 255.255.255.0
+ network-object 10.101.57.0 255.255.255.0
+ network-object 10.101.59.0 255.255.255.0
+''',
+        get_config_str,
+    ),
+
+    (
+        'add_object_group_service',
+        ('object-group service MPI_SERVICES_2\n',
+         ' service-object tcp destination range 2000 2002\n',
+         ' service-object udp destination range 2004 2006\n',
+         ' service-object tcp destination range ssh\n',
+         ' service-object esp\n',
+         ' service-object 98\n',
+         ),
+        None,
+        operator.contains,
+        True,
+        '''\
+object-group service MPI_SERVICES_2
+ service-object tcp destination range 2000 2002
+ service-object udp destination range 2004 2006
+ service-object tcp destination range ssh
+ service-object esp
+ service-object 98
+''',
+        get_config_str,
+    ),
+
+    (
+        'no_object_group_service',
+        ('no object-group service MPI_SERVICES_2\n',),
+        None,
+        operator.contains,
+        False,
+        '''\
+object-group service MPI_SERVICES_2
+ service-object tcp destination range 2000 2002
+ service-object udp destination range 2004 2006
+ service-object tcp destination range ssh
+ service-object esp
+ service-object 98
+''',
+        get_config_str,
+    ),
+
+    (
+        'add_bogus_access-list',
         ('access-list MPE-in extended permit object-group MPE_SERVICES '
          'object-group INTERNAL_MPI_SERVERS object-group BOGUS_BS\n',),
-        # TEST_ASA.return_invalid_input(),
+        'ERROR: specified object group <BOGUS> not found',
+        None,
+        None,
+        None,
+        None,
+    ),
+
+    (
+        'no_bogus_access-list',
+        ('no access-list MPE-in extended permit object-group MPE_SERVICES '
+         'object-group INTERNAL_MPI_SERVERS object-group BOGUS_BS\n',),
         None,
         None,
         None,
@@ -244,7 +311,7 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
-        'test_end',
+        'end',
         ('end\n',),
         None,
         operator.eq,

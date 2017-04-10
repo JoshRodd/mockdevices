@@ -18,8 +18,6 @@
         - no access-list <details .*>
 
     ToDo:
-        - add check to ensure aces can't be added with non-existent object-groups
-        - add check to ensure in-use object-groups can't be deleted
         - add support for delete by object-group id
         - add unit tests for all methods
         - add delete object-group element functionality
@@ -71,6 +69,7 @@ class ASA:
         self.update_dicts(self.config)
 
     def update_dicts(self, lines):
+        self.bound_object_groups = set()
 
         obj = 0
         object_group_name = ''
@@ -102,6 +101,17 @@ class ASA:
                     self.acls[name].append({n: acl.group(n) for n in acl.groupdict()})
                     self.acls[name][-1]['line'] = self.acls[name][-1]['line'] + 1 if self.acls[name][-1]['line'] else 1
                     self.acls[name][-1]['acl'] = line
+
+                    groups = ['svc_group', 'src_group', 'dst_group']
+                    svc = acl.groupdict()['svc_type']
+
+                    if svc and 'object-group' in svc:
+                        groups.add('svc')
+
+                    for group in groups:
+                        bound_obj = acl.groupdict()[group]
+                        if bound_obj:
+                            self.bound_object_groups.add(bound_obj)
 
     def update_config_file(self):
         with open(self.config_file, 'w') as cfg:
@@ -251,10 +261,27 @@ class ASA:
         self.current_object_group = False
         command = re.sub('line \d+ ', '', command.rstrip())
         section = False
+
+        obj_match = self.object_group_re.search(command.replace('no ', ''))
+        obj_id_match = re.search('no object-group id (\S+)', command)
+        acl_match = self.acl_re.search(command.replace('no', ''))
+
+        if obj_match:
+            if obj_match.group('name') in self.bound_object_groups:
+                print(obj_match.group('name'))
+                return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
+        if obj_id_match:
+            if obj_match.group('name') in self.object_groups:
+                command = 'object-group {service} {name}'.format(service=self.object_groups(obj_match('name')), name=obj_match('name'))
+            else:
+                return 'Removing object-group ({}) failed; it does not exist'.format(obj_match.group('name'))
+            if obj_id_match.group('name') in self.bound_object_groups:
+                return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
+
         for line in self.config:
             if section and re.search('^\s+\S', line):
                 new_config.remove(line)
-            elif command.replace('no ', '').strip() == line.strip():
+            elif command.replace('no ', '').strip() in line.strip():
                 new_config.remove(line)
                 section = True
             elif section:
@@ -264,17 +291,16 @@ class ASA:
             self.update_config_file()
             self.update_dicts(self.config)
         else:
-            if 'object-group' in command:
-                o = re.search('object-group \S+ (\S+)', command).group(1)
-                return 'Removing object-group ({}) failed; it does not exist'.format(o)
+            if obj_match:
+                return 'Removing object-group ({}) failed; it does not exist'.format(obj_match.group('name'))
                 # above case only technically handles object-groups that don't exist,
                 # should be below if the object-group is configured in an ACl
                 # return 'Removing object-group (<id>) not allowed, it is being used.'
-            elif 'access-list' in command:
-                return 'Specified access-list does not exist'
-                # above case only technically handles aces that don't exist,
-                # should be below if the acl doesn't exist period
-                # return 'ERROR: access-list <<acl>> does not exist'
+            elif acl_match:
+                if acl_match.group('name') in self.acls:
+                    return 'Specified access-list does not exist'
+                else:
+                    return 'ERROR: access-list <{}> does not exist'.format(acl_match.group('name'))
             else:
                 return self.return_invalid_input()
 
@@ -328,7 +354,7 @@ class ASA:
             if {j: i.group(j) for j in i.groupdict()} in self.object_groups[self.current_object_group]:
                 return 'Adding obj ({} ) to grp ({}) failed; object already exists'.format(line.rstrip(), self.current_object_group)
         elif s and self.current_object_group and 'service' in self.prompt_level[-1]:
-            if {j: s.group(j) for j in s.groupdict()} in self.bject_groups[self.current_object_group]:
+            if {j: s.group(j) for j in s.groupdict()} in self.object_groups[self.current_object_group]:
                 return 'Adding obj ({} ) to grp ({}) failed; object already exists'.format(line.rstrip(), self.current_object_group)
         else:
             return self.return_invalid_input()
@@ -344,8 +370,20 @@ class ASA:
         section = False
         asection = False
         a = self.acl_re.search((line))
+
         if not a:
             return self.return_invalid_input()
+
+        groups = ['svc_group', 'src_group', 'dst_group']
+        svc = a.groupdict()['svc_type']
+
+        if svc and 'object-group' in svc:
+            groups.add('svc')
+        for group in groups:
+            obj = a.groupdict()[group]
+            if obj:
+                if obj not in self.object_groups:
+                    return 'ERROR: specified object group <{}> not found'.format(obj)
 
         if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
             n = 0
