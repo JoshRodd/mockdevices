@@ -38,23 +38,41 @@ class ASA:
     port_object_re = re.compile('\s+port-object (?P<object>.*)$')
     network_object_re = re.compile('\s+network-object (?P<object>.*)')
     icmp_object_re = re.compile('\s+icmp-object (?P<object>.*)')
+    acl_re_old = re.compile('access-list '
+                            '(?P<name>\S+)( line '
+                            '(?P<line>\d+))? '
+                            '(?P<type>extended|remark'
+                            '(?P<remark>.*))( '
+                            '(?P<action>permit|deny)( '
+                            '(?P<protocol>\d{1,3}|object-group '
+                            '(?P<svc_group>\S+)|[a-z]+) '
+                            '(?P<src>(<?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                            '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
+                            '(?P<src_group>\S+)|any?) '
+                            '(?P<dst>(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} '
+                            '([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                            '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
+                            '(?P<dst_group>\S+)|any)( '
+                            '(?P<svc_type>(eq |gt |range |object-group )'
+                            '(?P<svc>.+)$))?)?)?$')
+
     acl_re = re.compile('access-list '
-                        '(?P<name>\S+) '
-                        '(?P<type>extended|remark '
-                        '(?P<remark>.*))( line '
-                        '(?P<line>\d+))?( '
+                        '(?P<name>\S+)( line '
+                        '(?P<line>\d+))? '
+                        '(?P<type>extended|remark'
+                        '(?P<remark>.*))( '
                         '(?P<action>permit|deny) '
                         '(?P<protocol>\d{1,3}|object-group '
                         '(?P<svc_group>\S+)|[a-z]+) '
                         '(?P<src>(<?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<src_group>\S+)|any?) '
-                        '(?P<dst>(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} '
-                        '([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                        '(?P<src_group>\S+)|any\d?) '
+                        '(?P<dst>'
+                        '(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<dst_group>\S+)|any)( '
+                        '(?P<dst_group>\S+)|any\d?)( '
                         '(?P<svc_type>(eq |gt |range |object-group )'
-                        '(?P<svc>.+)$))?)?')
+                        '(?P<svc>.+)$))?)?$')
 
     def __init__(self, config=None):
         self.config_file = config
@@ -116,7 +134,8 @@ class ASA:
 
     def update_config_file(self):
         with open(self.config_file, 'w') as cfg:
-            cfg.write(''.join(self.config))
+            self.config_string = ''.join(self.config)
+            cfg.write(''.join(self.config_string))
 
     def get_prompt(self):
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
@@ -192,6 +211,7 @@ class ASA:
             line = 1
             elem = 0
             for ace in aces:
+                print(ace['acl'], line)
                 services = []
                 sources = []
                 destinations = []
@@ -281,21 +301,22 @@ class ASA:
                 return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
 
         for index, line in enumerate(self.config):
-            if section and re.search('^\s+\S', line):
+            if command.replace('no ', '').strip() in line.strip():
+                remove = index
+                new_config.pop(remove)
+                section = True
+                continue
+            elif section and re.search('^\s+\S', line):
                 print('removing' + line + '|')
                 new_config.pop(remove)
                 if line in new_config:
                     print(line + 'wasnt removed')
                 continue
-            elif command.replace('no ', '').strip() in line.strip():
-                remove = index
-                new_config.pop(remove)
-                section = True
-                continue
+
             elif section:
                 break
         if section:
-            self.config = new_config
+            self.config = new_config[:]
             self.update_config_file()
             self.update_dicts(self.config)
         else:
@@ -339,7 +360,7 @@ class ASA:
                         new_config.insert(n, line)
                         self.current_line = n + 1
                         break
-                self.config = new_config
+                self.config = new_config[:]
                 self.update_config_file()
                 self.update_dicts(self.config)
             else:
@@ -389,7 +410,7 @@ class ASA:
         svc = a.groupdict()['svc_type']
 
         if svc and 'object-group' in svc:
-            groups.add('svc')
+            groups.append('svc')
         for group in groups:
             obj = a.groupdict()[group]
             if obj:
