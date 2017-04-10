@@ -1,10 +1,10 @@
 DONE sent enable
 DONE sent enable password
-sent 'show running config'
-sent 'show access-list'
-sent 'show ipv6 access-list'
+sent 'show running config' DONE - print asa.conf from root of nate's branch
+sent 'show access-list' DONE - use conf.py from root of nate's branch
+DONE sent 'show ipv6 access-list'
 DONE sent 'show clock'
-sent 'show version'
+sent 'show version' - for now just spew bogus interfaces
 DONE sent 'logout' or 'quit' or 'exit'
 extras
 DONE show cpu
