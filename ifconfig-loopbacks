@@ -7,15 +7,21 @@ if [ "$1" == "--help" ]; then
 Usage: $0 [OPTION]...
 Configure the loopback interface with a large number of alias addresses.
 
--alias, --unalias	remove the aliases instead of adding them
+-alias, --no-alias	remove the aliases instead of adding them
 --interface=if, -i if	use the interface \`if' instead of the default
 			interface \`$ifname'
 -f, --force		adds the aliases back even if they seem to already
 			exist
---subnet=a.b.2.0[/23]	uses the subnet a.b.2.0/23 instead of 127.200.2/23
---ncsubnet=a.0.0.1	uses the subnet a.0.0.1 with netmask 255.0.0.255
+--subnet=a.b.2.0[/23]	uses the subnet a.b.2.0/23 instead of 127.200.2/23;
+			pattern will be a.b.0.2 - a.b.0.254 for a total of
+			500 addresses
+--ncsubnet=a.b.0.1[/21]	uses the pattern a.b.0.1, a.b.0.5, etc.; will be a
+			total of 512 addresses
 -n, --dry-run		show the commands that would be executed instead of
 			actually executing them
+-l, --list		only list out IP addresses, do nothing else
+--hosts=hostprefix	alter /etc/hosts, use given prefix
+--hostfile=HOSTFILE	use HOSTFILE instead of /etc/hosts
     --help		display this help and exit
     --version		output version information ($version) and exit
 
@@ -41,7 +47,10 @@ dryrun=""
 nc=""
 netmask=255.255.255.255
 hexnetmask=0xffffffff
-unalias=""
+removealias=""
+hostprefix=""
+listonly=""
+HOSTSFILE=/etc/hosts
 UNAME=$(uname) || exit
 if [ "$UNAME" == "Darwin" ]; then ifname=lo0;
 elif [ "$UNAME" == "Linux" ]; then ifname=lo;
@@ -49,8 +58,8 @@ else
 	echo "Warning: the $UNAME platform is not supported." >&2
 fi
 while [ "$1" != "" ]; do
-	if [ "$1" == "-alias" -o "$1" == "--alias" ]; then
-		unalias=1
+	if [ "$1" == "-alias" -o "$1" == "--no-alias" ]; then
+		removealias=1
 		shift
 	elif [ "$1" == "--force" -o "$1" == "-f" ]; then
 		force=1
@@ -90,16 +99,26 @@ while [ "$1" != "" ]; do
 		OLD_IFS="$IFS"
 		IFS="./"
 		read a b c d e < <(printf "%s" "$subnet")
+		if [ "$e" = "" ]; then e=21; fi
 		IFS="$OLD_IFS"
 		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 127 -o \
-			"$b" -ne "$b" -o "$b" -lt 1 -o "$b" -gt 254 -o \
+			"$b" -ne 0 -o \
 			"$c" -ne "$c" -o "$c" -lt 1 -o "$c" -gt 254 -o \
 			"$d" != "1" -o \
-			"$e" != "" ]; then
+			"$e" != "21" ]; then
 			echo "Invalid subnet \`$subnet'" >&2
 			exit 1
 		fi
 		nc=1
+		shift
+	elif [ "${1:0:13}" == "--hostprefix=" ]; then
+		hostprefix=${1:13}
+		shift
+	elif [ "${1:0:11}" == "--hostfile=" ]; then
+		HOSTSFILE=${1:11}
+		shift
+	elif [ "$1" == "--list" -o "$1" == "-l" ]; then
+		listonly=1
 		shift
 	else
 		echo "Invalid parameter \`$1'" >&2
@@ -107,49 +126,81 @@ while [ "$1" != "" ]; do
 	fi
 done
 
+if [ $hostprefix != "" -a ! -w "$HOSTSFILE" ]; then
+	echo "The file \`$HOSTSFILE' is not writeable." >&2
+	exit 1
+fi
+
 progress=""
 if [ -t 0 -a -t 1 ]; then
 	progress=1
 fi
 
-cstart="$c"
-cend=$[$cstart + 1]
-dstart=2
-dend=251
+if [ ! "$nc" ]; then
+	cstart="$c"
+	cend=$[$cstart + 1]
+	dstart=2
+	dend=251
+	dincr=1
+	total=$[($dend - $dstart + 1) * ($cend - $cstart + 1)]
+fi
 
-total=$[($dend - $dstart + 1) * ($cend - $cstart + 1)]
 counter=0
 
 progressshown=""
 
 if [ "$nc" == "1" ]; then
 	aa=$a; bb=$b; cc=$c; dd=$d
+	cstart="$c"
+	cend=$[$cstart + 8 - 1]
+	dstart="$d"
+	dincr=4
+	dend=253
+	total=$[((($dend - $dstart) / $dincr) + 1) * ($cend - $cstart + 1)]
 fi
 
 for c in $(seq $cstart $cend); do
-	for d in $(seq $dstart $dend); do
-		if [ "$nc" == "1" ]; then
-			ifaddr=$aa.$c.$d.$dd
-		else
-			ifaddr=$a.$c.$d.$d
-		fi
+	for d in $(seq $dstart $dincr $dend); do
+		ifaddr=$a.$b.$c.$d
+		ifaddr2=$a-$b-$c-$d
+		ifaddrpat=$a\\.$b\\.$c\\.$d
 		read existingifaddr
-		if [ "$ifaddr" != "$existingifaddr" -o "$force" ]; then
+		if [ "$listonly" == "1" ]; then
+			echo $ifaddr
+		fi
+		if [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
+			if [ "$hostprefix" != "" ]; then
+				hostent="$(printf "%s\t%s-%s\n" "$ifaddr" "$hostprefix" "$ifaddr2")"
+				hostentprintf="$(printf "%s\\\\t%s-%s\\\\n" "$ifaddr" "$hostprefix" "$ifaddr2")"
+				hostpattern="$(printf "/^\\s*%s[[:space:]]+%s-%s\\s*$/" "$ifaddrpat" "$hostprefix" "$ifaddr2")"
+			fi
 			if [ "$dryrun" ]; then
 				echo ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255
+				if [ "$hostprefix" != "" ]; then
+					echo sed -Ei \"\" \'"$hostpattern"\'d \'"$HOSTSFILE"\'
+				fi
 			else
 				ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255 2>/dev/null
+				if [ "$hostprefix" != "" ]; then
+					sed -Ei "" "$hostpattern"d "$HOSTSFILE" || exit
+				fi
 			fi
-			if [ ! "$unalias" ]; then
+			if [ ! "$removealias" ]; then
 				if [ "$dryrun" ]; then
 					echo ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
+					if [ "$hostprefix" != "" ]; then
+						echo printf \'"$hostentprintf"\' \>\> \'"$HOSTSFILE"\'
+					fi
 				else
 					ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
-				fi
-				rc=$?
-				if [ $rc -gt 0 ]; then
-					echo Cannot alias $ifname $ifaddr\; are you root\?
-					exit $rc
+					rc=$?
+					if [ $rc -gt 0 ]; then
+						echo Cannot alias $ifname $ifaddr\; are you root\?
+						exit $rc
+					fi
+					if [ "$hostprefix" != "" ]; then
+						printf "%s" "$hostent" >> "$HOSTSFILE" || exit
+					fi
 				fi
 			fi
 			if [ "$progress" -a ! "$dryrun" ]; then
