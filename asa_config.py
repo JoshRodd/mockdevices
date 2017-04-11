@@ -2,9 +2,8 @@
 
 from jinja2 import Environment
 
-
-def template(hostname=None, wan_network=None, wan_addess=None, mpi_address=None, mpe_address=None,
-             users_address=None, users_network=None, mpe_network=None, mpi_network=None, wan_peer=None):
+def asa_config(hostname=None, wan_network=None, wan_addess=None, mpi_address=None, mpe_address=None,
+               users_address=None, users_network=None, mpe_network=None, mpi_network=None, wan_peer=None):
     fields = {
         'hostname': hostname or 'asa-site1-9-0-0-0',
         'wan_network': wan_network or '9.0.0.0 255.255.248.0',
@@ -23,4 +22,4 @@ def template(hostname=None, wan_network=None, wan_addess=None, mpi_address=None,
     return t.render(fields)
 
 
-print(template())
+#print(asa_config())
