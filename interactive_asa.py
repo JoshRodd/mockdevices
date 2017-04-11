@@ -46,7 +46,8 @@ class ASA:
                             '(?P<action>permit|deny)( '
                             '(?P<protocol>\d{1,3}|object-group '
                             '(?P<svc_group>\S+)|[a-z]+) '
-                            '(?P<src>(<?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                            '(?P<src>'
+                            '(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                             '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
                             '(?P<src_group>\S+)|any?) '
                             '(?P<dst>(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} '
@@ -64,7 +65,8 @@ class ASA:
                         '(?P<action>permit|deny) '
                         '(?P<protocol>\d{1,3}|object-group '
                         '(?P<svc_group>\S+)|[a-z]+) '
-                        '(?P<src>(<?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                        '(?P<src>'
+                        '(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
                         '(?P<src_group>\S+)|any\d?) '
                         '(?P<dst>'
@@ -78,7 +80,7 @@ class ASA:
         self.config_file = config
         with open(config, "r+") as cfg:
             self.config = list(cfg)
-        self.config_string = ''.join(self.config)
+        self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
         self.hostname = next(l for l in self.config if 'hostname' in l).split(' ')[1].rstrip()
         self.prompt_level = []
         self.prompt_end = '> '
@@ -134,7 +136,7 @@ class ASA:
 
     def update_config_file(self):
         with open(self.config_file, 'w') as cfg:
-            self.config_string = ''.join(self.config)
+            self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
             cfg.write(''.join(self.config_string))
 
     def get_prompt(self):
@@ -169,7 +171,6 @@ class ASA:
 
     def exit(self, cmd):
         if self.prompt_level:
-            print(self.prompt_level)
             self.prompt_level.pop()
         else:
             return 1
@@ -211,7 +212,6 @@ class ASA:
             line = 1
             elem = 0
             for ace in aces:
-                print(ace['acl'], line)
                 services = []
                 sources = []
                 destinations = []
@@ -287,10 +287,10 @@ class ASA:
         obj_match = self.object_group_re.search(command.replace('no ', ''))
         obj_id_match = re.search('no object-group id (\S+)', command)
         acl_match = self.acl_re.search(command.replace('no', ''))
+        acl_line_match = re.search('no access-list (?P<name>\S+) line (?P<number>\d+)', command)
 
         if obj_match:
             if obj_match.group('name') in self.bound_object_groups:
-                print(obj_match.group('name'))
                 return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
         if obj_id_match:
             if obj_match.group('name') in self.object_groups:
@@ -300,22 +300,29 @@ class ASA:
             if obj_id_match.group('name') in self.bound_object_groups:
                 return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
 
+        line_num = 0
         for index, line in enumerate(self.config):
+            if acl_line_match:
+                if acl_line_match.group('name') in line:
+                    line_num += 1
+                if line_num == int(acl_line_match.group('number')):
+                    new_config.pop(index)
+                    section = True
+                    break
+
             if command.replace('no ', '').strip() in line.strip():
                 remove = index
                 new_config.pop(remove)
                 section = True
                 continue
             elif section and re.search('^\s+\S', line):
-                print('removing' + line + '|')
                 new_config.pop(remove)
-                if line in new_config:
-                    print(line + 'wasnt removed')
                 continue
 
             elif section:
                 break
         if section:
+            self.prompt_level = ['config']
             self.config = new_config[:]
             self.update_config_file()
             self.update_dicts(self.config)
@@ -337,7 +344,6 @@ class ASA:
         o = self.object_group_re.search(line)
 
         if not o or not self.prompt_level or (self.prompt_level and self.prompt_level[0] != 'config'):
-            print(self.prompt_level)
             return self.return_invalid_input()
 
         if o:
@@ -366,7 +372,6 @@ class ASA:
             else:
                 self.current_line = next((i for i, j in enumerate(self.config) if line in j)) + 1
         else:
-            print(line)
             return self.return_invalid_input()
 
     def object_group_element(self, line):
@@ -388,7 +393,6 @@ class ASA:
             if {j: s.group(j) for j in s.groupdict()} in self.object_groups[self.current_object_group]:
                 return 'Adding obj ({} ) to grp ({}) failed; object already exists'.format(line.rstrip(), self.current_object_group)
         else:
-            print(line)
             return self.return_invalid_input()
 
         new_config.insert(self.current_line, line)
@@ -398,6 +402,9 @@ class ASA:
         self.update_dicts(self.config)
 
     def access_list(self, line):
+        if 'config' not in self.prompt_level:
+            return self.return_invalid_input()
+
         new_config = self.config[:]
         section = False
         asection = False
@@ -418,13 +425,13 @@ class ASA:
                     return 'ERROR: specified object group <{}> not found'.format(obj)
 
         if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
-            n = 0
+            line_num = 0
             for n, l in enumerate(self.config):
                 if a.groupdict()['line']:
                     if a.group('name') in l:
-                        n += 1
-                    if n == a.group('line'):
-                        new_config.insert(n, line)
+                        line_num += 1
+                    if line_num == int(a.group('line')):
+                        new_config.insert(n, re.sub(' line \d+', '', line))
                         break
                 if re.search('^access-list', l):
                     asection = True
@@ -438,6 +445,8 @@ class ASA:
                     break
         else:
             return 'WARNING: <{}> found duplicate element'.format(a.group('name'))
+
+        self.prompt_level = ['config']
 
         self.current_object_group = False
         self.config = new_config[:]
@@ -464,13 +473,11 @@ class ASA:
         for k, c in self.commands:
             m = re.search(k, command)
             if m:
-                print('function: "{}"'.format(c.__name__))
                 func = c
                 args = m.groupdict()
                 valid = True
                 return func(self, command, **args)
         if not valid:
-            print(' send error: "{}"'.format(command))
             return self.return_invalid_input()
 
 
