@@ -1,0 +1,10 @@
+{% hostname % } like <prefix>-56.0.0.0
+{% wan_network %} like 56.0.0.0 255.255.248.0
+{% wan_addess %} like 56.0.0.0 255.255.255.252
+{% mpi_address %} like 56.128.0.1 255.255.255.128
+{% mpe_address %} like 56.128.0.129 255.255.255.128
+{% users_address %} like 10.100.0.1 255.255.255.0
+{% users_network %} like 10.100.0.0 255.255.255.0
+{% mpe_network %} like 56.128.0.0 255.255.255.128
+{% mpi_network %} like 56.128.0.128 255.255.255.128
+{% wan_peer % } like 56.0.0.2 255.255.248.0
