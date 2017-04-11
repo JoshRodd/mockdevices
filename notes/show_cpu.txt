@@ -1,0 +1,9 @@
+asav-1# show cpu
+CPU utilization for 5 seconds = 2%; 1 minute: 0%; 5 minutes: 0%
+
+Virtual platform CPU resources
+------------------------------
+Number of vCPUs              :     1
+Number of allowed vCPUs      :     0
+vCPU Status                  :  Noncompliant: Over-provisioned
+asav-1#

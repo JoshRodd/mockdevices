@@ -1,0 +1,17 @@
+DONE sent enable
+DONE sent enable password
+sent 'show running config' DONE - print asa.conf from root of nate's branch
+sent 'show access-list' DONE - use conf.py from root of nate's branch
+DONE sent 'show ipv6 access-list'
+DONE sent 'show clock'
+sent 'show version' - for now just spew bogus interfaces
+DONE sent 'logout' or 'quit' or 'exit'
+extras
+DONE show cpu
+DONE show mem
+DONE show cpu | i util
+dyn data - ignore:
+show name
+show route
+show route management-only
+show interface

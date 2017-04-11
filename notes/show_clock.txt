@@ -1,0 +1,3 @@
+asav-1# show clock
+21:14:40.859 UTC Fri Apr 7 2017
+asav-1#

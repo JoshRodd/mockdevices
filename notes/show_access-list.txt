@@ -1,0 +1,132 @@
+asav-1# show access-list
+access-list cached ACL log flows: total 0, denied 0 (deny-flow-max 4096)
+            alert-interval 300
+access-list outside-in; 12 elements; name hash: 0x4cd7d86a
+access-list outside-in line 1 remark ### outside-in ACL
+access-list outside-in line 2 extended permit icmp any any (hitcnt=0) 0xea400d9d
+access-list outside-in line 3 extended permit object-group INTERNET_SERVICES object-group INTERNET_SERVERS object-group INTERNAL_MPE_SERVERS (hitcnt=0) 0x94bbb581
+  access-list outside-in line 3 extended permit tcp host 71.129.45.34 10.10.47.128 255.255.255.192 eq 8443 (hitcnt=0) 0x83e238e1
+  access-list outside-in line 3 extended permit udp host 71.129.45.34 10.10.47.128 255.255.255.192 eq 25 (hitcnt=0) 0xe143641b
+access-list outside-in line 4 extended permit object-group INTERNET_SERVICES object-group INTERNET_SERVERS object-group INTERNAL_MPI_SERVERS (hitcnt=0) 0x739da4c0
+  access-list outside-in line 4 extended permit tcp host 71.129.45.34 10.10.47.192 255.255.255.192 eq 8443 (hitcnt=0) 0xefde0733
+  access-list outside-in line 4 extended permit udp host 71.129.45.34 10.10.47.192 255.255.255.192 eq 25 (hitcnt=0) 0x52fd8e8f
+access-list outside-in line 5 extended permit object-group MPI_SERVICES object-group MPI_SERVERS object-group INTERNAL_MPI_SERVERS (hitcnt=0) 0xf0fd162b
+  access-list outside-in line 5 extended permit tcp 10.0.0.192 255.0.0.192 10.10.47.192 255.255.255.192 range 1098 1099 (hitcnt=0) 0xc3770342
+  access-list outside-in line 5 extended permit udp 10.0.0.192 255.0.0.192 10.10.47.192 255.255.255.192 range 1098 1099 (hitcnt=0) 0xfc578430
+  access-list outside-in line 5 extended permit tcp 10.0.0.192 255.0.0.192 10.10.47.192 255.255.255.192 range ftp telnet (hitcnt=0) 0xf2d04f68
+  access-list outside-in line 5 extended permit ah 10.0.0.192 255.0.0.192 10.10.47.192 255.255.255.192 (hitcnt=0) 0xf5ec4098
+  access-list outside-in line 5 extended permit 97 10.0.0.192 255.0.0.192 10.10.47.192 255.255.255.192 (hitcnt=0) 0x45c40cc6
+access-list outside-in line 6 extended permit object-group MPE_SERVICES object-group MPE_SERVERS object-group INTERNAL_MPE_SERVERS (hitcnt=0) 0x9bef2b33
+  access-list outside-in line 6 extended permit tcp 10.0.0.128 255.0.0.192 10.10.47.128 255.255.255.192 eq https (hitcnt=0) 0xf5935b79
+  access-list outside-in line 6 extended permit tcp 10.0.0.128 255.0.0.192 10.10.47.128 255.255.255.192 eq 8443 (hitcnt=0) 0xc1c4d7c5
+access-list MPE-in; 15 elements; name hash: 0xa86b7a40
+access-list MPE-in line 1 remark ### MPE-in ACL
+access-list MPE-in line 2 extended permit icmp any any (hitcnt=0) 0x0d783ae8
+access-list MPE-in line 3 extended permit object-group MPE_SERVICES object-group INTERNAL_MPE_SERVERS object-group MPE_SERVERS (hitcnt=0) 0xe0e5cba2
+  access-list MPE-in line 3 extended permit tcp 10.10.47.128 255.255.255.192 10.0.0.128 255.0.0.192 eq https (hitcnt=0) 0x4e15c404
+  access-list MPE-in line 3 extended permit tcp 10.10.47.128 255.255.255.192 10.0.0.128 255.0.0.192 eq 8443 (hitcnt=0) 0x504093f1
+access-list MPE-in line 4 extended permit object-group MPE_SERVICES object-group INTERNAL_MPI_SERVERS object-group MPE_SERVERS (hitcnt=0) 0x7a0558f3
+  access-list MPE-in line 4 extended permit tcp 10.10.47.192 255.255.255.192 10.0.0.128 255.0.0.192 eq https (hitcnt=0) 0x26f15f5b
+  access-list MPE-in line 4 extended permit tcp 10.10.47.192 255.255.255.192 10.0.0.128 255.0.0.192 eq 8443 (hitcnt=0) 0xb6b01131
+access-list MPE-in line 5 extended permit object-group MPE_SERVICES object-group INTERNAL_MPI_SERVERS object-group ENCLAVE_MAIL_SERVERS (hitcnt=0) 0x1e1a34f2
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.51.0 255.255.255.0 eq https (hitcnt=0) 0x322cf001
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.53.0 255.255.255.0 eq https (hitcnt=0) 0x38bc1791
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.55.0 255.255.255.0 eq https (hitcnt=0) 0x422cda80
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.57.0 255.255.255.0 eq https (hitcnt=0) 0x03279442
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.59.0 255.255.255.0 eq https (hitcnt=0) 0x1c92f6d9
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.51.0 255.255.255.0 eq 8443 (hitcnt=0) 0xf758e2c2
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.53.0 255.255.255.0 eq 8443 (hitcnt=0) 0x6b47d9b5
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.55.0 255.255.255.0 eq 8443 (hitcnt=0) 0x13711e13
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.57.0 255.255.255.0 eq 8443 (hitcnt=0) 0xa785be50
+  access-list MPE-in line 5 extended permit tcp 10.10.47.192 255.255.255.192 10.100.59.0 255.255.255.0 eq 8443 (hitcnt=0) 0x319bb7f1
+access-list MPI-in; 38 elements; name hash: 0x693307a6
+access-list MPI-in line 1 remark ### MPI-in ACL
+access-list MPI-in line 2 extended permit icmp any any (hitcnt=0) 0x6976b568
+access-list MPI-in line 3 extended permit object-group MPI_SERVICES object-group INTERNAL_MPI_SERVERS object-group MPI_SERVERS (hitcnt=0) 0xe510350c
+  access-list MPI-in line 3 extended permit tcp 10.10.47.192 255.255.255.192 10.0.0.192 255.0.0.192 range 1098 1099 (hitcnt=0) 0xeb7b8530
+  access-list MPI-in line 3 extended permit udp 10.10.47.192 255.255.255.192 10.0.0.192 255.0.0.192 range 1098 1099 (hitcnt=0) 0x0459366b
+  access-list MPI-in line 3 extended permit tcp 10.10.47.192 255.255.255.192 10.0.0.192 255.0.0.192 range ftp telnet (hitcnt=0) 0x005e97d6
+  access-list MPI-in line 3 extended permit ah 10.10.47.192 255.255.255.192 10.0.0.192 255.0.0.192 (hitcnt=0) 0xd9f1e5c3
+  access-list MPI-in line 3 extended permit 97 10.10.47.192 255.255.255.192 10.0.0.192 255.0.0.192 (hitcnt=0) 0x3ae9cd94
+access-list MPI-in line 4 extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group INTERNET_SERVERS (hitcnt=0) 0x36a3bdfa
+  access-list MPI-in line 4 extended permit tcp 10.10.51.0 255.255.255.0 host 71.129.45.34 eq 8080 (hitcnt=0) 0xc919ce8e
+access-list MPI-in line 5 extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_ORDERING_SERVERS (hitcnt=0) 0xc9da4b91
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.52.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x6c8a6907
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.54.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0xd25165c2
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.56.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x29f7c0be
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.58.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x8c114f81
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.60.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0xf69ecebc
+  access-list MPI-in line 5 extended permit udp 10.10.51.0 255.255.255.0 10.100.52.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x97398dc4
+  access-list MPI-in line 5 extended permit udp 10.10.51.0 255.255.255.0 10.100.54.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x4e131941
+  access-list MPI-in line 5 extended permit udp 10.10.51.0 255.255.255.0 10.100.56.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0xed800043
+  access-list MPI-in line 5 extended permit udp 10.10.51.0 255.255.255.0 10.100.58.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0x6575186c
+  access-list MPI-in line 5 extended permit udp 10.10.51.0 255.255.255.0 10.100.60.0 255.255.255.0 range 1098 1099 (hitcnt=0) 0xc7bae482
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.52.0 255.255.255.0 range ftp telnet (hitcnt=0) 0x0f48c7da
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.54.0 255.255.255.0 range ftp telnet (hitcnt=0) 0x2b0c93eb
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.56.0 255.255.255.0 range ftp telnet (hitcnt=0) 0xe9b83e7b
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.58.0 255.255.255.0 range ftp telnet (hitcnt=0) 0x42a53421
+  access-list MPI-in line 5 extended permit tcp 10.10.51.0 255.255.255.0 10.100.60.0 255.255.255.0 range ftp telnet (hitcnt=0) 0xf34d3443
+  access-list MPI-in line 5 extended permit ah 10.10.51.0 255.255.255.0 10.100.52.0 255.255.255.0 (hitcnt=0) 0x039f8d0a
+  access-list MPI-in line 5 extended permit ah 10.10.51.0 255.255.255.0 10.100.54.0 255.255.255.0 (hitcnt=0) 0xa1253db0
+  access-list MPI-in line 5 extended permit ah 10.10.51.0 255.255.255.0 10.100.56.0 255.255.255.0 (hitcnt=0) 0xd1213563
+  access-list MPI-in line 5 extended permit ah 10.10.51.0 255.255.255.0 10.100.58.0 255.255.255.0 (hitcnt=0) 0x751915d8
+  access-list MPI-in line 5 extended permit ah 10.10.51.0 255.255.255.0 10.100.60.0 255.255.255.0 (hitcnt=0) 0x0ee6987a
+  access-list MPI-in line 5 extended permit 97 10.10.51.0 255.255.255.0 10.100.52.0 255.255.255.0 (hitcnt=0) 0x2ab6b080
+  access-list MPI-in line 5 extended permit 97 10.10.51.0 255.255.255.0 10.100.54.0 255.255.255.0 (hitcnt=0) 0x5b8f3234
+  access-list MPI-in line 5 extended permit 97 10.10.51.0 255.255.255.0 10.100.56.0 255.255.255.0 (hitcnt=0) 0x224ead54
+  access-list MPI-in line 5 extended permit 97 10.10.51.0 255.255.255.0 10.100.58.0 255.255.255.0 (hitcnt=0) 0x2e2b6a73
+  access-list MPI-in line 5 extended permit 97 10.10.51.0 255.255.255.0 10.100.60.0 255.255.255.0 (hitcnt=0) 0x9ac21160
+access-list MPI-in line 6 extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_USER_SERVICES (hitcnt=0) 0x7129817f
+  access-list MPI-in line 6 extended permit tcp 10.10.51.0 255.255.255.0 10.100.70.160 255.254.255.252 eq 8080 (hitcnt=0) 0xd15278b1
+access-list MPI-in line 7 extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group MPE_SERVERS (hitcnt=0) 0xad049097
+  access-list MPI-in line 7 extended permit tcp 10.10.51.0 255.255.255.0 10.0.0.128 255.0.0.192 range 1098 1099 (hitcnt=0) 0xec12b966
+  access-list MPI-in line 7 extended permit udp 10.10.51.0 255.255.255.0 10.0.0.128 255.0.0.192 range 1098 1099 (hitcnt=0) 0x283ff3b4
+  access-list MPI-in line 7 extended permit tcp 10.10.51.0 255.255.255.0 10.0.0.128 255.0.0.192 range ftp telnet (hitcnt=0) 0x0eb763ad
+  access-list MPI-in line 7 extended permit ah 10.10.51.0 255.255.255.0 10.0.0.128 255.0.0.192 (hitcnt=0) 0xd7d70556
+  access-list MPI-in line 7 extended permit 97 10.10.51.0 255.255.255.0 10.0.0.128 255.0.0.192 (hitcnt=0) 0xfe503df8
+access-list TEST_ACL1; 12 elements; name hash: 0xaf90b04a
+access-list TEST_ACL1 line 1 extended permit object-group SCW_12345_svc_AR1 any object-group SCW_12345_dst_AR1 (hitcnt=0) 0xd62f79c3
+  access-list TEST_ACL1 line 1 extended permit tcp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0xe20e3dc5
+  access-list TEST_ACL1 line 1 extended permit udp any host 10.1.1.1 eq domain (hitcnt=0) 0x1558da28
+  access-list TEST_ACL1 line 1 extended permit udp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0x44b32c89
+  access-list TEST_ACL1 line 1 extended permit esp any host 10.1.1.1 (hitcnt=0) 0x7469d00e
+access-list TEST_ACL1 line 2 extended permit object-group SCW_12345_svc_AR2 object-group SCW_12345_src_AR2 object-group SCW_12345_dst_AR2 (hitcnt=0) 0x721253c4
+  access-list TEST_ACL1 line 2 extended permit icmp 10.10.10.200 255.255.255.254 host 10.1.1.1 echo (hitcnt=0) 0x1c8eea22
+  access-list TEST_ACL1 line 2 extended permit icmp 10.0.0.1 255.0.0.255 host 10.1.1.1 echo (hitcnt=0) 0x725e59f7
+  access-list TEST_ACL1 line 2 extended permit udp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq syslog (hitcnt=0) 0xd4616657
+  access-list TEST_ACL1 line 2 extended permit udp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq syslog (hitcnt=0) 0xdeeb3ef2
+  access-list TEST_ACL1 line 2 extended permit tcp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq ldaps (hitcnt=0) 0x5542dba1
+  access-list TEST_ACL1 line 2 extended permit tcp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq ldaps (hitcnt=0) 0x35cfaf2b
+  access-list TEST_ACL1 line 2 extended permit ah 10.10.10.200 255.255.255.254 host 10.1.1.1 (hitcnt=0) 0x5ece849d
+  access-list TEST_ACL1 line 2 extended permit ah 10.0.0.1 255.0.0.255 host 10.1.1.1 (hitcnt=0) 0x046f2153
+access-list TEST_ACL2; 12 elements; name hash: 0x25827a8b
+access-list TEST_ACL2 line 1 extended permit object-group SCW_12345_svc_AR1 any object-group SCW_12345_dst_AR1 (hitcnt=0) 0xa0dc879c
+  access-list TEST_ACL2 line 1 extended permit tcp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0xc11a3786
+  access-list TEST_ACL2 line 1 extended permit udp any host 10.1.1.1 eq domain (hitcnt=0) 0x6c51f5bb
+  access-list TEST_ACL2 line 1 extended permit udp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0x4e4048a3
+  access-list TEST_ACL2 line 1 extended permit esp any host 10.1.1.1 (hitcnt=0) 0xe7752113
+access-list TEST_ACL2 line 2 extended permit object-group SCW_12345_svc_AR2 object-group SCW_12345_src_AR2 object-group SCW_12345_dst_AR2 (hitcnt=0) 0xf4f407a1
+  access-list TEST_ACL2 line 2 extended permit icmp 10.10.10.200 255.255.255.254 host 10.1.1.1 echo (hitcnt=0) 0x8b0275b6
+  access-list TEST_ACL2 line 2 extended permit icmp 10.0.0.1 255.0.0.255 host 10.1.1.1 echo (hitcnt=0) 0x9eed833a
+  access-list TEST_ACL2 line 2 extended permit udp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq syslog (hitcnt=0) 0x0765f2b9
+  access-list TEST_ACL2 line 2 extended permit udp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq syslog (hitcnt=0) 0x3cc15be8
+  access-list TEST_ACL2 line 2 extended permit tcp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq ldaps (hitcnt=0) 0x4e41cac1
+  access-list TEST_ACL2 line 2 extended permit tcp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq ldaps (hitcnt=0) 0xe0aec803
+  access-list TEST_ACL2 line 2 extended permit ah 10.10.10.200 255.255.255.254 host 10.1.1.1 (hitcnt=0) 0x50083b11
+  access-list TEST_ACL2 line 2 extended permit ah 10.0.0.1 255.0.0.255 host 10.1.1.1 (hitcnt=0) 0x0cf7b8a7
+access-list TEST_ACL3; 12 elements; name hash: 0xab8f3c4d
+access-list TEST_ACL3 line 1 extended permit object-group SCW_12345_svc_AR1 any object-group SCW_12345_dst_AR1 (hitcnt=0) 0xf02f774f
+  access-list TEST_ACL3 line 1 extended permit tcp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0xa2b447b8
+  access-list TEST_ACL3 line 1 extended permit udp any host 10.1.1.1 eq domain (hitcnt=0) 0x54c51842
+  access-list TEST_ACL3 line 1 extended permit udp any host 10.1.1.1 range 1000 10000 (hitcnt=0) 0x08638dea
+  access-list TEST_ACL3 line 1 extended permit esp any host 10.1.1.1 (hitcnt=0) 0xbd5ef9ee
+access-list TEST_ACL3 line 2 extended permit object-group SCW_12345_svc_AR2 object-group SCW_12345_src_AR2 object-group SCW_12345_dst_AR2 (hitcnt=0) 0x564b2bc4
+  access-list TEST_ACL3 line 2 extended permit icmp 10.10.10.200 255.255.255.254 host 10.1.1.1 echo (hitcnt=0) 0x66b0cb17
+  access-list TEST_ACL3 line 2 extended permit icmp 10.0.0.1 255.0.0.255 host 10.1.1.1 echo (hitcnt=0) 0xb04b6360
+  access-list TEST_ACL3 line 2 extended permit udp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq syslog (hitcnt=0) 0x70850a1e
+  access-list TEST_ACL3 line 2 extended permit udp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq syslog (hitcnt=0) 0x1202aebe
+  access-list TEST_ACL3 line 2 extended permit tcp 10.10.10.200 255.255.255.254 host 10.1.1.1 eq ldaps (hitcnt=0) 0x0577e516
+  access-list TEST_ACL3 line 2 extended permit tcp 10.0.0.1 255.0.0.255 host 10.1.1.1 eq ldaps (hitcnt=0) 0xf1b291e3
+  access-list TEST_ACL3 line 2 extended permit ah 10.10.10.200 255.255.255.254 host 10.1.1.1 (hitcnt=0) 0x826c0a58
+  access-list TEST_ACL3 line 2 extended permit ah 10.0.0.1 255.0.0.255 host 10.1.1.1 (hitcnt=0) 0x44d545e4
+asav-1#

@@ -1,0 +1,3 @@
+asav-1# show cpu | i util
+CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%
+asav-1#
