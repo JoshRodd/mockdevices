@@ -20,7 +20,7 @@ Configure the loopback interface with a large number of alias addresses.
 -n, --dry-run		show the commands that would be executed instead of
 			actually executing them
 -l, --list		only list out IP addresses, do nothing else
---hosts=hostprefix	alter /etc/hosts, use given prefix
+--hostprefix=PREFIX	alter /etc/hosts, use given PREFIX like \`site'
 --hostfile=HOSTFILE	use HOSTFILE instead of /etc/hosts
     --help		display this help and exit
     --version		output version information ($version) and exit
@@ -103,7 +103,7 @@ while [ "$1" != "" ]; do
 		IFS="$OLD_IFS"
 		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 127 -o \
 			"$b" -ne 0 -o \
-			"$c" -ne "$c" -o "$c" -lt 1 -o "$c" -gt 254 -o \
+			"$c" -ne "$c" -o "$c" -lt 0 -o "$c" -gt 254 -o \
 			"$d" != "1" -o \
 			"$e" != "21" ]; then
 			echo "Invalid subnet \`$subnet'" >&2
@@ -170,8 +170,8 @@ for c in $(seq $cstart $cend); do
 		fi
 		if [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
 			if [ "$hostprefix" != "" ]; then
-				hostent="$(printf "%s\t%s-%s\n" "$ifaddr" "$hostprefix" "$ifaddr2")"
-				hostentprintf="$(printf "%s\\\\t%s-%s\\\\n" "$ifaddr" "$hostprefix" "$ifaddr2")"
+				hostent="$(printf "%s\t%s%s-%s\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
+				hostentprintf="$(printf "%s\\\\t%s%s-%s\\\\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
 				hostpattern="$(printf "/^\\s*%s[[:space:]]+%s-%s\\s*$/" "$ifaddrpat" "$hostprefix" "$ifaddr2")"
 			fi
 			if [ "$dryrun" ]; then
@@ -205,9 +205,9 @@ for c in $(seq $cstart $cend); do
 			fi
 			if [ "$progress" -a ! "$dryrun" ]; then
 				progressshown=1
-				counter=$[$counter + 1]
 				echo -n -e "\r$[100 * $counter / $total]% ... "
 			fi
+			counter=$[$counter + 1]
 		fi
 	done
 done < <(ifconfig lo0 | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4)
