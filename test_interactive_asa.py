@@ -370,6 +370,32 @@ object-group network ENCLAVE_MAIL_SERVERS_2
     ),
 
     (
+        'add_access_list_line',
+        ('access-list MPE-in line 2 extended permit ip 10.101.20.54 255.255.255.254 any',),
+        None,
+        operator.contains,
+        True,
+        ('''\
+access-list MPE-in remark ### MPE-in ACL
+access-list MPE-in extended permit ip 10.101.20.54 255.255.255.254 any
+access-list MPE-in extended permit icmp any any
+''',),
+        get_config_str,
+    ),
+
+    (
+        'no_access_list_line',
+        ('no access-list MPE-in line 2',),
+        None,
+        operator.contains,
+        False,
+        ('''\
+access-list MPE-in extended permit ip 10.101.20.54 255.255.255.254 any
+''',),
+        get_config_str,
+    ),
+
+    (
         'no_object_group_in_use',
         ('no object-group network ENCLAVE_MAIL_SERVERS_2\n',),
         'Removing object-group (ENCLAVE_MAIL_SERVERS_2) not allowed, it is being used.',
