@@ -8,6 +8,103 @@ from interactive_asa import ASA
 from asa_config import asa_config
 import readline
 
+import contextlib
+import io
+import os
+import sys
+import warnings
+import termios
+
+def asa_getpass(prompt='Password: ', stream=None, echochar='*'):
+    """Prompt for a password, with echo turned off, and echo asterisks.
+    Args:
+      prompt: Written on stream to ask for the input.  Default: 'Password: '
+      stream: A writable file object to display the prompt.  Defaults to
+              the tty.  If no tty is available defaults to sys.stderr.
+    Returns:
+      The seKr3t input.
+    Raises:
+      EOFError: If our input tty or stdin was closed.
+      GetPassWarning: When we were unable to turn echo off on the input.
+    Always restores terminal settings before returning.
+    """
+    passwd = None
+    with contextlib.ExitStack() as stack:
+        try:
+            # Always try reading and writing directly on the tty first.
+            fd = os.open('/dev/tty', os.O_RDWR|os.O_NOCTTY)
+            tty = io.FileIO(fd, 'w+')
+            stack.enter_context(tty)
+            input = io.TextIOWrapper(tty)
+            stack.enter_context(input)
+            if not stream:
+                stream = input
+        except OSError as e:
+            # If that fails, see if stdin can be controlled.
+            stack.close()
+            try:
+                fd = sys.stdin.fileno()
+            except (AttributeError, ValueError):
+                fd = None
+                passwd = fallback_getpass(prompt, stream)
+            input = sys.stdin
+            if not stream:
+                stream = sys.stderr
+
+        if fd is not None:
+            try:
+                old = termios.tcgetattr(fd)     # a copy to save
+                new = old[:]
+                new[3] &= ~termios.ECHO  # 3 == 'lflags'
+                tcsetattr_flags = termios.TCSAFLUSH
+                if hasattr(termios, 'TCSASOFT'):
+                    tcsetattr_flags |= termios.TCSASOFT
+                try:
+                    termios.tcsetattr(fd, tcsetattr_flags, new)
+                    passwd = _raw_input(prompt, stream, input=input)
+                finally:
+                    termios.tcsetattr(fd, tcsetattr_flags, old)
+                    stream.flush()  # issue7208
+            except termios.error:
+                if passwd is not None:
+                    # _raw_input succeeded.  The final tcsetattr failed.  Reraise
+                    # instead of leaving the terminal in an unknown state.
+                    raise
+                # We can't control the tty or stdin.  Give up and use normal IO.
+                # fallback_getpass() raises an appropriate warning.
+                if stream is not input:
+                    # clean up unused file objects before blocking
+                    stack.close()
+                passwd = fallback_getpass(prompt, stream)
+
+        stream.write('*' * (len(passwd)))
+        stream.write('\n')
+        return passwd
+
+def _raw_input(prompt="", stream=None, input=None):
+    # This doesn't save the string in the GNU readline history.
+    if not stream:
+        stream = sys.stderr
+    if not input:
+        input = sys.stdin
+    prompt = str(prompt)
+    if prompt:
+        try:
+            stream.write(prompt)
+        except UnicodeEncodeError:
+            # Use replace error handler to get as much as possible printed.
+            prompt = prompt.encode(stream.encoding, 'replace')
+            prompt = prompt.decode(stream.encoding)
+            stream.write(prompt)
+        stream.flush()
+    # NOTE: The Python C API calls flockfile() (and unlock) during readline.
+    line = input.readline()
+    if not line:
+        raise EOFError
+    if line[-1] == '\n':
+        line = line[:-1]
+    return line
+
 SSH_CONN_KEY = 'SSH_CONNECTION'
 try:
     ssh_conn = os.environ[SSH_CONN_KEY]
@@ -115,27 +212,37 @@ sys.stdout.flush()
 
 no_more=False
 
-while True:
+in_enable = False
+
+from getpass import getpass
+
+outp = ''
+while not device.check_exit():
     ln = input(device.get_prompt());
-    outp = ''
-    if ln in ('en\n', 'ena\n', 'enab\n', 'enabl\n', 'enable\n'):
-        print('\rPassword: ', end='')
-        flush()
-        enablepasswordln = sys.stdin.readline()
-        if '{}\n'.format(enable_password) != enablepasswordln:
+    if ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
+        enablepasswordln = asa_getpass('Password: ')
+        if '{}'.format(enable_password) != enablepasswordln:
             print('Invalid password.')
         else:
-            device.send('enable\n')
-    elif ln == 'terminal pager 0\n':
+            device.send('enable')
+            in_enable = True
+        continue
+    filt = None
+    if re.search(r" \| (i|include) ", ln) is not None:
+        grps = re.match(r"^([^|]*) \| (?:i|include) (.*)$", ln)
+        if grps:
+            ln = grps[1]
+            filt = grps[2]
+    if in_enable and ln == 'terminal pager 0':
         no_more=True
         pass
-    elif ln == 'show cpu | i util\n':
+    elif in_enable and ln == 'show cpu | i util':
         outp += 'CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%'
-    elif ln == 'show clock\n':
+    elif in_enable and ln == 'show clock':
         locale.setlocale(locale.LC_TIME, "C")
         outp += "{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc))
-    elif ln == 'show mem\n':
-        print('''\
+    elif in_enable and ln == 'show mem':
+        outp += '''\
 Free memory:        1441865728 bytes (67%)
 Used memory:         705617920 bytes (33%)
 -------------     ------------------
@@ -146,14 +253,9 @@ Virtual platform memory
 Provisioned       2048 MB
 Allowed              0 MB
 Status            Noncompliant: Over-provisioned
-''', end='')
-    elif ln == 'show version | i Software Version\n':
-        print('''\
-Cisco Adaptive Security Appliance Software Version 9.1(7)13
-''', end='');
-        flush()
-    elif ln == 'show cpu\n':
-        print('''\
+'''
+    elif in_enable and ln == 'show cpu':
+        outp += '''\
 CPU utilization for 5 seconds = 2%; 1 minute: 0%; 5 minutes: 0%
 
 Virtual platform CPU resources
@@ -161,20 +263,87 @@ Virtual platform CPU resources
 Number of vCPUs              :     1
 Number of allowed vCPUs      :     0
 vCPU Status                  :  Noncompliant: Over-provisioned
-''', end='');
-    elif ln == 'show ipv6 access-list\n':
+'''
+    elif ln in ('show ver', 'show version'):
+        outp += '''\
+
+Cisco Adaptive Security Appliance Software Version 9.5(2)204
+Device Manager Version 7.5(2)
+
+Compiled on Mon 15-Feb-16 19:00 PST by builders
+System image file is "boot:/asa952-204-smp-k8.bin"
+Config file at boot was "startup-config"
+
+asav-1 up 15 days 22 hours
+
+Hardware:   ASAv, 2048 MB RAM, CPU Pentium II 2000 MHz,
+Model Id:   ASAv10
+Internal ATA Compact Flash, 129024MB
+Slot 1: ATA Compact Flash, 129024MB
+BIOS Flash Firmware Hub @ 0x0, 0KB
+
+
+ 0: Ext: Management0/0       : address is fa16.3e06.211c, irq 11
+ 1: Ext: GigabitEthernet0/0  : address is fa16.3e5f.a0b3, irq 11
+ 2: Ext: GigabitEthernet0/1  : address is fa16.3ec9.0bdd, irq 10
+ 3: Ext: GigabitEthernet0/2  : address is fa16.3e9a.d57b, irq 10
+ 4: Ext: GigabitEthernet0/3  : address is fa16.3e01.0452, irq 11
+
+License mode: Smart Licensing
+ASAv Platform License State: Unlicensed
+No active entitlement: no feature tier and no throughput level configured
+*Memory resource allocation is more than the permitted limit.
+
+Licensed features for this platform:
+Maximum Physical Interfaces       : 10
+Maximum VLANs                     : 50
+Inside Hosts                      : Unlimited
+Failover                          : Active/Standby
+Encryption-DES                    : Enabled
+Encryption-3DES-AES               : Enabled
+Security Contexts                 : 0
+Carrier                           : Disabled
+AnyConnect Premium Peers          : 2
+AnyConnect Essentials             : Disabled
+Other VPN Peers                   : 250
+Total VPN Peers                   : 250
+AnyConnect for Mobile             : Disabled
+AnyConnect for Cisco VPN Phone    : Disabled
+Advanced Endpoint Assessment      : Disabled
+Shared License                    : Disabled
+Total UC Proxy Sessions           : 2
+Botnet Traffic Filter             : Enabled
+Cluster                           : Disabled
+
+Serial Number: 9AJDFJGV165
+
+Image type          : Release
+Key version         : A
+
+Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
+'''
+    elif in_enable and ln == 'show ipv6 access-list':
         pass
-    elif re.match('^\s*$', ln):
+    elif in_enable and re.match('^\s*$', ln):
         pass
-    else:
+    elif in_enable or ln in ('quit', 'logout', 'exit'):
         response = device.send(ln)
         if response == 1:
             break
         if response is not None:
             outp += response
             flush()
+    else:
+        outp = device.return_invalid_input()
     if len(outp) > 0:
-        print(outp)
+        if device.check_error() or filt is None:
+            print(outp)
+        else:
+            for l in outp.split('\n'):
+                if filt in l:
+                    print(l)
+        flush()
+        outp = ''
 print('''\
 
 Logoff

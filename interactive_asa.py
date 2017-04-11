@@ -90,6 +90,8 @@ class ASA:
         self.hostname = next(l for l in self.config if 'hostname' in l).split(' ')[1].rstrip()
         self.prompt_level = []
         self.prompt_end = '> '
+        self.in_error = False
+        self.in_exit = False
 
 
         self.object_groups = defaultdict(list)
@@ -151,12 +153,14 @@ class ASA:
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
 
     def return_invalid_input(self):
+        self.in_error = True
         return (
             '{m:>{w}}\n'.format(m='^', w=len([i for i in self.get_prompt()])+1) +
             "ERROR: % Invalid input detected at \'^\' marker.\n"
         )
 
     def return_incomplete(self):
+        self.in_error = True
         return 'ERROR: % Incomplete command'
 
     def enable(self, cmd):
@@ -181,7 +185,7 @@ class ASA:
         if self.prompt_level:
             self.prompt_level.pop()
         else:
-            return 1
+            self.in_exit = True
 
     def show_run(self, cmd):
         return self.config_string
@@ -205,6 +209,7 @@ class ASA:
     def show_access_list(self, cmd, access_list=None):
 
         if access_list and access_list not in self.acls:
+            self.in_error = True
             return 'ERROR: access-list <{}> does not exist\n'.format(access_list) if access_list else ''
 
         output = []
@@ -342,8 +347,10 @@ class ASA:
                 # return 'Removing object-group (<id>) not allowed, it is being used.'
             elif acl_match:
                 if acl_match.group('name') in self.acls:
+                    self.in_error = True
                     return 'Specified access-list does not exist'
                 else:
+                    self.in_error = True
                     return 'ERROR: access-list <{}> does not exist'.format(acl_match.group('name'))
             else:
                 return self.return_invalid_input()
@@ -430,6 +437,7 @@ class ASA:
             obj = a.groupdict()[group]
             if obj:
                 if obj not in self.object_groups:
+                    self.in_error = True
                     return 'ERROR: specified object group <{}> not found'.format(obj)
 
         if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
@@ -487,6 +495,15 @@ class ASA:
                 return func(self, command, **args)
         if not valid:
             return self.return_invalid_input()
+
+    def check_error(self):
+        if self.in_error:
+            self.in_error = False
+            return True
+        return False
+
+    def check_exit(self):
+        return self.in_exit
 
 
 def asa_hash(ace):
