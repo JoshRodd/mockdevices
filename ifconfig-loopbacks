@@ -13,6 +13,7 @@ Configure the loopback interface with a large number of alias addresses.
 -f, --force		adds the aliases back even if they seem to already
 			exist
 --subnet=a.b.2.0[/23]	uses the subnet a.b.2.0/23 instead of 127.200.2/23
+--ncsubnet=a.0.0.1	uses the subnet a.0.0.1 with netmask 255.0.0.255
 -n, --dry-run		show the commands that would be executed instead of
 			actually executing them
     --help		display this help and exit
@@ -37,6 +38,9 @@ e=23
 
 ifname=lo0
 dryrun=""
+nc=""
+netmask=255.255.255.255
+hexnetmask=0xffffffff
 unalias=""
 UNAME=$(uname) || exit
 if [ "$UNAME" == "Darwin" ]; then ifname=lo0;
@@ -51,10 +55,11 @@ while [ "$1" != "" ]; do
 	elif [ "$1" == "--force" -o "$1" == "-f" ]; then
 		force=1
 		shift
-	elif [ "${1:0:11}" == "--interface=" ]; then
+	elif [ "${1:0:12}" == "--interface=" ]; then
 		ifname=${1:9}
 		shift
 	elif [ "$1" == "-i" ]; then
+		shift
 		if [ "$1" != "" ]; then
 			ifname="$1"
 			shift
@@ -80,7 +85,22 @@ while [ "$1" != "" ]; do
 			exit 1
 		fi
 		shift
-		echo $subnet $a $b $c $d $e
+	elif [ "${1:0:11}" == "--ncsubnet=" ]; then
+		subnet=${1:11}
+		OLD_IFS="$IFS"
+		IFS="./"
+		read a b c d e < <(printf "%s" "$subnet")
+		IFS="$OLD_IFS"
+		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 127 -o \
+			"$b" -ne "$b" -o "$b" -lt 1 -o "$b" -gt 254 -o \
+			"$c" -ne "$c" -o "$c" -lt 1 -o "$c" -gt 254 -o \
+			"$d" != "1" -o \
+			"$e" != "" ]; then
+			echo "Invalid subnet \`$subnet'" >&2
+			exit 1
+		fi
+		nc=1
+		shift
 	else
 		echo "Invalid parameter \`$1'" >&2
 		exit 1
@@ -100,14 +120,19 @@ dend=251
 total=$[($dend - $dstart + 1) * ($cend - $cstart + 1)]
 counter=0
 
-netmask=255.255.255.255
-hexnetmask=0xffffffff
-
 progressshown=""
+
+if [ "$nc" == "1" ]; then
+	aa=$a; bb=$b; cc=$c; dd=$d
+fi
 
 for c in $(seq $cstart $cend); do
 	for d in $(seq $dstart $dend); do
-		ifaddr=$a.$b.$c.$d
+		if [ "$nc" == "1" ]; then
+			ifaddr=$aa.$c.$d.$dd
+		else
+			ifaddr=$a.$c.$d.$d
+		fi
 		read existingifaddr
 		if [ "$ifaddr" != "$existingifaddr" -o "$force" ]; then
 			if [ "$dryrun" ]; then
@@ -123,7 +148,7 @@ for c in $(seq $cstart $cend); do
 				fi
 				rc=$?
 				if [ $rc -gt 0 ]; then
-					echo Cannot alias lo0 $ifaddr\; are you root\?
+					echo Cannot alias $ifname $ifaddr\; are you root\?
 					exit $rc
 				fi
 			fi
