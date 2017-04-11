@@ -76,14 +76,21 @@ class ASA:
                         '(?P<svc_type>(eq |gt |range |object-group )'
                         '(?P<svc>.+)$))?)?$')
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, configstr=None):
+        assert config or configstr
+        assert not (config and configstr)
         self.config_file = config
-        with open(config, "r+") as cfg:
-            self.config = list(cfg)
+        if configstr is None:
+            with open(config, "r+") as cfg:
+                self.config = list(cfg)
+        else:
+            self.config = configstr.split('\n')
+
         self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
         self.hostname = next(l for l in self.config if 'hostname' in l).split(' ')[1].rstrip()
         self.prompt_level = []
         self.prompt_end = '> '
+
 
         self.object_groups = defaultdict(list)
         self.acls = defaultdict(list)
@@ -135,9 +142,10 @@ class ASA:
                             self.bound_object_groups.add(bound_obj)
 
     def update_config_file(self):
-        with open(self.config_file, 'w') as cfg:
-            self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
-            cfg.write(''.join(self.config_string))
+        self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
+        if self.config_file is not None:
+            with open(self.config_file, 'w') as cfg:
+                cfg.write(''.join(self.config_string))
 
     def get_prompt(self):
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
@@ -183,9 +191,9 @@ class ASA:
         output = ''
         for line in self.config:
             if section and re.search('^\s+\S', line):
-                output += line
+                output += line + '\n'
             elif re.search('^object-group ', line) and (re.search(' {}\s'.format(group_id), line) if group_id else True):
-                output += line
+                output += line + '\n'
                 section = True
             elif section:
                 break
@@ -461,7 +469,7 @@ class ASA:
         (r'^\s*end', end),
         (r'^\s*ena?b?l?e?', enable),
         (r'^\s*confi?g? te?r?m?i?n?a?l?', config_t),
-        (r'^\s*exit', exit),
+        (r'^\s*(ex|exit|logout|q|quit)', exit),
         (r'^\s*no', no),
         (r'^\s*access-l', access_list),
         (r'^\s*object-', object_group),

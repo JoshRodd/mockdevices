@@ -4,6 +4,9 @@ import os, re, getpass, ipaddress, sys, locale, socket
 from ipaddress import ip_address, ip_network, IPv4Address, IPv6Address, IPv4Interface
 from datetime import datetime, timezone
 from collections import defaultdict
+from interactive_asa import ASA
+from asa_config import asa_config
+import readline
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
 try:
@@ -91,9 +94,7 @@ kwds = {
     'users_address':    ifaces['users'],
 }
 
-from asa_config import asa_config
-cfg = asa_config(**kwds)
-
+device = ASA(configstr=asa_config(**kwds))
 
 motd = '''\
 
@@ -112,35 +113,27 @@ print(motd, end='')
 
 sys.stdout.flush()
 
-in_enable=False
-cur_prompt='>'
 no_more=False
 
 while True:
-    print('\r{}{} '.format(local_hostname, cur_prompt), end='')
-    flush()
-    ln = sys.stdin.readline()
-    if ln == 'enable\n':
+    ln = input(device.get_prompt());
+    outp = ''
+    if ln in ('en\n', 'ena\n', 'enab\n', 'enabl\n', 'enable\n'):
         print('\rPassword: ', end='')
         flush()
         enablepasswordln = sys.stdin.readline()
         if '{}\n'.format(enable_password) != enablepasswordln:
             print('Invalid password.')
         else:
-            in_enable=True
-            cur_prompt='#'
-    elif ln in ('exit\n', 'logout\n', 'quit\n'):
-        break
+            device.send('enable\n')
     elif ln == 'terminal pager 0\n':
         no_more=True
         pass
     elif ln == 'show cpu | i util\n':
-        print('CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%')
+        outp += 'CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%'
     elif ln == 'show clock\n':
         locale.setlocale(locale.LC_TIME, "C")
-        print("{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc)))
-    elif ln == 'mock dump\n':
-        print(cfg)
+        outp += "{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc))
     elif ln == 'show mem\n':
         print('''\
 Free memory:        1441865728 bytes (67%)
@@ -171,10 +164,17 @@ vCPU Status                  :  Noncompliant: Over-provisioned
 ''', end='');
     elif ln == 'show ipv6 access-list\n':
         pass
+    elif re.match('^\s*$', ln):
+        pass
     else:
-        print('''         ^
-ERROR: % Invalid input detected at '^' marker.''')
-        flush()
+        response = device.send(ln)
+        if response == 1:
+            break
+        if response is not None:
+            outp += response
+            flush()
+    if len(outp) > 0:
+        print(outp)
 print('''\
 
 Logoff
