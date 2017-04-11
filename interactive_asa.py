@@ -78,13 +78,19 @@ class ASA:
 
     def __init__(self, config=None, configstr=None):
         assert config or configstr
-        assert not (config and configstr)
         self.config_file = config
         if configstr is None:
-            with open(config, "r+") as cfg:
+            with open(config, "r") as cfg:
                 self.config = list(cfg)
         else:
-            self.config = configstr.split('\n')
+            if self.config_file is not None:
+                try:
+                    with open(config, "r") as cfg:
+                        self.config = list(cfg)
+                except IOError:
+                    self.config = configstr.split('\n')
+            else:
+                self.config = configstr.split('\n')
 
         self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
         self.hostname = next(l for l in self.config if 'hostname' in l).split(' ')[1].rstrip()

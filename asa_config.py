@@ -58,7 +58,7 @@ interface Management0/0
  management-only
  nameif mgmt
  security-level 100
- ip address 172.16.1.126 255.255.255.0
+ ip address {{ management_address }}
 !
 ftp mode passive
 same-security-traffic permit inter-interface
@@ -285,7 +285,10 @@ Cryptochecksum:89fc0e7a75db639607400231a59c9051
 '''
 
 def asa_config(hostname=None, wan_network=None, wan_address=None, mpi_address=None, mpe_address=None,
-               users_address=None, users_network=None, mpe_network=None, mpi_network=None, wan_peer=None, conf_file='baseline_asa.conf'):
+               users_address=None, management_address=None,
+               users_network=None, mpe_network=None, mpi_network=None, wan_peer=None,
+               management_network=None,
+               conf_file='baseline_asa.conf'):
     try:
         with open(conf_file) as cfg:
             filecontent = cfg.read()
@@ -302,4 +305,6 @@ def asa_config(hostname=None, wan_network=None, wan_address=None, mpi_address=No
         'mpe_address': mpe_address or '9.128.0.129 255.255.255.128',
         'users_network': users_network or '10.100.0.0 255.255.255.0',
         'users_address': users_address or '10.100.0.1 255.255.255.0',
+        'management_network': management_network or '172.16.0.0 255.255.254.0',
+        'management_address': management_address or '172.16.1.126 255.255.254.0'
     } )

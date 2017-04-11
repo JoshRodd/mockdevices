@@ -14,8 +14,11 @@ import os
 import sys
 import warnings
 import termios
+import tty
 
-def asa_getpass(prompt='Password: ', stream=None, echochar='*'):
+MORE_STRING = '<--- More --->'
+
+def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echochar='*'):
     """Prompt for a password, with echo turned off, and echo asterisks.
     Args:
       prompt: Written on stream to ask for the input.  Default: 'Password: '
@@ -30,26 +33,7 @@ def asa_getpass(prompt='Password: ', stream=None, echochar='*'):
     """
     passwd = None
     with contextlib.ExitStack() as stack:
-        try:
-            # Always try reading and writing directly on the tty first.
-            fd = os.open('/dev/tty', os.O_RDWR|os.O_NOCTTY)
-            tty = io.FileIO(fd, 'w+')
-            stack.enter_context(tty)
-            input = io.TextIOWrapper(tty)
-            stack.enter_context(input)
-            if not stream:
-                stream = input
-        except OSError as e:
-            # If that fails, see if stdin can be controlled.
-            stack.close()
-            try:
-                fd = sys.stdin.fileno()
-            except (AttributeError, ValueError):
-                fd = None
-                passwd = fallback_getpass(prompt, stream)
-            input = sys.stdin
-            if not stream:
-                stream = sys.stderr
+        fd = stream.fileno()
 
         if fd is not None:
             try:
@@ -61,7 +45,7 @@ def asa_getpass(prompt='Password: ', stream=None, echochar='*'):
                     tcsetattr_flags |= termios.TCSASOFT
                 try:
                     termios.tcsetattr(fd, tcsetattr_flags, new)
-                    passwd = _raw_input(prompt, stream, input=input)
+                    passwd = _raw_input(prompt, stream, input)
                 finally:
                     termios.tcsetattr(fd, tcsetattr_flags, old)
                     stream.flush()  # issue7208
@@ -70,23 +54,13 @@ def asa_getpass(prompt='Password: ', stream=None, echochar='*'):
                     # _raw_input succeeded.  The final tcsetattr failed.  Reraise
                     # instead of leaving the terminal in an unknown state.
                     raise
-                # We can't control the tty or stdin.  Give up and use normal IO.
-                # fallback_getpass() raises an appropriate warning.
-                if stream is not input:
-                    # clean up unused file objects before blocking
-                    stack.close()
-                passwd = fallback_getpass(prompt, stream)
 
         stream.write('*' * (len(passwd)))
         stream.write('\n')
         return passwd
 
-def _raw_input(prompt="", stream=None, input=None):
+def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin):
     # This doesn't save the string in the GNU readline history.
-    if not stream:
-        stream = sys.stderr
-    if not input:
-        input = sys.stdin
     prompt = str(prompt)
     if prompt:
         try:
@@ -105,6 +79,16 @@ def _raw_input(prompt="", stream=None, input=None):
         line = line[:-1]
     return line
 
+def raw_inputch(inp=sys.stdin):
+    fd = inp.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
 SSH_CONN_KEY = 'SSH_CONNECTION'
 try:
     ssh_conn = os.environ[SSH_CONN_KEY]
@@ -113,8 +97,11 @@ try:
        raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
     remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
 except KeyError:
-#    remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
-    remote_ip_addr, remote_port, local_ip_addr, local_port = '56.0.0.5', 22, '56.0.0.5', 22
+    if len(sys.argv) < 2:
+        local_ip_addr = '::1'
+    else:
+        local_ip_addr = sys.argv[1]
+    remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
 local_user = getpass.getuser()
 enable_password = 'asapass'
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
@@ -123,9 +110,11 @@ if isinstance(local_ip_addr, IPv6Address):
         local_ip_addr = IPv4Address('127.0.0.1')
     else:
         raise Exception('IPv6 is not supported other than for loopback addresses like `::1\'.')
-local_hostname = socket.getfqdn(str(local_ip_addr))
-if local_hostname == str(local_ip_addr):
-    raise Exception('Cannot resolve IP address `{}\' to a hostname.'.format(local_ip_addr))
+    local_hostname = 'localhost'
+else:
+    local_hostname = socket.getfqdn(str(local_ip_addr))
+    if local_hostname == str(local_ip_addr):
+        raise Exception('Cannot resolve IP address `{}\' to a hostname.'.format(local_ip_addr))
 
 def flush():
     try:
@@ -133,7 +122,11 @@ def flush():
     except:
         pass
 
-siteid = int(re.search(r"site(\d+)", local_hostname).group(1))
+grps = re.search(r"site(\d+)", local_hostname)
+if grps:
+    siteid = int(group(1))
+else:
+    siteid = 1
 kwds = {}
 prefixlen = {}
 ntwks_base = {}
@@ -148,6 +141,7 @@ prefixlen_noncontig['mpi'] = 1
 prefixlen['mpe'] = 25
 prefixlen_noncontig['mpe'] = 1
 prefixlen['users'] = 24
+prefixlen['management'] = 23
 offsets['mpi'] = '0.128.0.0'
 offsets['mpe'] = '0.128.0.128'
 wan_interface = IPv4Interface(str(local_ip_addr) + '/' + str(prefixlen['wan']))
@@ -160,6 +154,7 @@ assert wan_classa_base == wan_interface.network.network_address
 
 bases = {}
 bases['users'] = '10.100.0.0'
+bases['management'] = '172.16.0.0'
 
 interface_list = ['wan', 'mpe', 'mpi', 'users']
 
@@ -171,12 +166,15 @@ ntwks_base['users'] = ip_address(bases['users'])
 for iface in ntwks_base:
     ntwks[iface] = ntwks_base[iface] + ((siteid - 1) * pow(2, 32 - prefixlen[iface] + prefixlen_noncontig[iface]))
 
+ntwks['management'] = ip_address(bases['management'])
+
 for iface in ntwks:
     ifaces[iface] = IPv4Interface(str(ntwks[iface] + 1) + '/' + str(prefixlen[iface])).with_netmask.replace('/', ' ')
 
+ifaces['management'] = IPv4Interface(str(ntwks['management'] + siteid) + '/' + str(prefixlen['management'])).with_netmask.replace('/', ' ')
+
 for iface in ntwks:
     ntwks[iface] = IPv4Interface(str(ntwks[iface]) + '/' + str(prefixlen[iface])).with_netmask.replace('/', ' ')
-
 
 kwds = {
     'hostname':         local_hostname,
@@ -189,6 +187,8 @@ kwds = {
     'mpe_address':      ifaces['mpe'],
     'users_network':    ntwks['users'],
     'users_address':    ifaces['users'],
+    'management_network': ntwks['management'],
+    'management_address': ifaces['management'],
 }
 
 device = ASA(configstr=asa_config(**kwds))
@@ -210,11 +210,11 @@ print(motd, end='')
 
 sys.stdout.flush()
 
-no_more=False
-
 in_enable = False
 
 from getpass import getpass
+
+pager_size = 24
 
 outp = ''
 while not device.check_exit():
@@ -234,8 +234,7 @@ while not device.check_exit():
             ln = grps[1]
             filt = grps[2]
     if in_enable and ln == 'terminal pager 0':
-        no_more=True
-        pass
+        pager_size = 0
     elif in_enable and ln == 'show cpu | i util':
         outp += 'CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%'
     elif in_enable and ln == 'show clock':
@@ -336,12 +335,30 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
     else:
         outp = device.return_invalid_input()
     if len(outp) > 0:
-        if device.check_error() or filt is None:
+        if device.check_error() or (filt is None and pager_size == 0):
             print(outp)
         else:
+            outlines = 0
+            ch = ''
             for l in outp.split('\n'):
-                if filt in l:
+                outlines += 1
+                if filt is not None:
+                    if filt in l:
+                        print(l)
+                else:
                     print(l)
+                if pager_size > 0 and outlines >= pager_size:
+                    print(MORE_STRING, end='')
+                    flush()
+                    ch = ''
+                    while ch not in (' ', '\n', '\r', 'q'):
+                        ch = raw_inputch()
+                        if ch == ' ':
+                            outlines = 0
+                    print('\r' + ' ' * len(MORE_STRING) + '\r', end='')
+                    flush()
+                if ch == 'q':
+                    break
         flush()
         outp = ''
 print('''\
