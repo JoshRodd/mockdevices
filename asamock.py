@@ -13,7 +13,8 @@ try:
        raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
     remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
 except KeyError:
-    remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
+#    remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
+    remote_ip_addr, remote_port, local_ip_addr, local_port = '56.0.0.5', 22, '56.0.0.5', 22
 local_user = getpass.getuser()
 enable_password = 'asapass'
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
@@ -32,7 +33,6 @@ def flush():
     except:
         pass
 
-# local_ip_addr = ipaddress.IPv4Address('56.0.0.1')
 siteid = int(re.search(r"site(\d+)", local_hostname).group(1))
 kwds = {}
 prefixlen = {}
@@ -77,9 +77,11 @@ for iface in ntwks:
 for iface in ntwks:
     ntwks[iface] = IPv4Interface(str(ntwks[iface]) + '/' + str(prefixlen[iface])).with_netmask.replace('/', ' ')
 
+
 kwds = {
     'hostname':         local_hostname,
     'wan_network':      ntwks['wan'],
+    'wan_address':      ifaces['wan'],
     'wan_peer':         peers['wan'],
     'mpi_network':      ntwks['mpi'],
     'mpi_address':      ifaces['mpi'],
@@ -89,15 +91,9 @@ kwds = {
     'users_address':    ifaces['users'],
 }
 
-for k, v in kwds.items():
-    print('{}: {}'.format(k, v))
-
 from asa_config import asa_config
 cfg = asa_config(**kwds)
 
-print(cfg)
-
-sys.exit(0)
 
 motd = '''\
 
@@ -143,6 +139,8 @@ while True:
     elif ln == 'show clock\n':
         locale.setlocale(locale.LC_TIME, "C")
         print("{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc)))
+    elif ln == 'mock dump\n':
+        print(cfg)
     elif ln == 'show mem\n':
         print('''\
 Free memory:        1441865728 bytes (67%)

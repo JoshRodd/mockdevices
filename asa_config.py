@@ -25,11 +25,11 @@ passwd 2KFQnbNIdI.2KYOU encrypted
 names
 !
 interface GigabitEthernet0/0
- description to ** MPLS Uplink {{ wan_network }} **
+ description to ** MPLS Uplink **
  duplex full
  nameif outside
  security-level 0
- ip address {{ wan_addess }}
+ ip address {{ wan_address }}
 !
 interface GigabitEthernet0/1
  description to ** Internal MPI Network **
@@ -48,7 +48,7 @@ interface GigabitEthernet0/2
 interface GigabitEthernet0/3
  description to ** Internal Users **
  shutdown
- nameif USERS
+ nameif users
  no security-level
  ip address {{ users_address }}
 !
@@ -123,11 +123,11 @@ access-list MPE-in extended permit object-group MPE_SERVICES object-group INTERN
 access-list MPI-in remark ### MPI-in ACL
 access-list MPI-in extended permit icmp any any
 access-list MPI-in extended permit object-group MPI_SERVICES object-group INTERNAL_MPI_SERVERS object-group MPI_SERVERS
-access-list USER-in remark ### MPI-in ACL
-access-list USERS-in extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_ORDERING_SERVERS
-access-list USERS-in extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group MPE_SERVERS
-access-list USERS-in extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group INTERNET_SERVERS
-access-list USERS-in extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_USER_SERVICES
+access-list users-in remark ### users-in ACL
+access-list users-in extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_ORDERING_SERVERS
+access-list users-in extended permit object-group MPI_SERVICES object-group INTERNAL_USERS object-group MPE_SERVERS
+access-list users-in extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group INTERNET_SERVERS
+access-list users-in extended permit object-group USER_SERVICES object-group INTERNAL_USERS object-group ENCLAVE_USER_SERVICES
 pager lines 23
 logging enable
 logging timestamp
@@ -148,7 +148,7 @@ no arp permit-nonconnected
 access-group outside-in in interface outside
 access-group MPI-in in interface MPI
 access-group MPE-in in interface MPE
-access-group USERS-in in interface USERS
+access-group users-in in interface users
 route outside 0.0.0.0 0.0.0.0 {{ wan_peer }}  1
 timeout xlate 3:00:00
 timeout pat-xlate 0:00:30
@@ -284,15 +284,17 @@ Cryptochecksum:89fc0e7a75db639607400231a59c9051
 : end
 '''
 
-def asa_config(hostname=None, wan_network=None, wan_addess=None, mpi_address=None, mpe_address=None,
-               users_address=None, users_network=None, mpe_network=None, mpi_network=None, wan_peer=None):
-#    with open('baseline_asa.conf') as cfg:
-#        env = Environment()
-#        t = env.from_string(cfg.read())
-    return Environment().from_string(baseline_asa_conf_file_text).render( {
+def asa_config(hostname=None, wan_network=None, wan_address=None, mpi_address=None, mpe_address=None,
+               users_address=None, users_network=None, mpe_network=None, mpi_network=None, wan_peer=None, conf_file='baseline_asa.conf'):
+    try:
+        with open(conf_file) as cfg:
+            filecontent = cfg.read()
+    except:
+        filecontent = baseline_asa_conf_file_text
+    return Environment(newline_sequence = '\n').from_string(filecontent).render( {
         'hostname': hostname or 'asa-site1-9-0-0-0',
-        'wan_network': wan_network or '9.0.0.0 255.255.248.0',
-        'wan_addess': wan_addess or '9.0.0.0 255.255.255.252',
+        'wan_network': wan_network or '9.0.0.0 255.255.255.252',
+        'wan_address': wan_address or '9.0.0.1 255.255.255.252',
         'wan_peer': wan_peer or '9.0.0.2 255.255.248.0',
         'mpi_network': mpi_network or '9.128.0.0 255.255.255.128',
         'mpi_address': mpi_address or '9.128.0.1 255.255.255.128',
@@ -300,4 +302,4 @@ def asa_config(hostname=None, wan_network=None, wan_addess=None, mpi_address=Non
         'mpe_address': mpe_address or '9.128.0.129 255.255.255.128',
         'users_network': users_network or '10.100.0.0 255.255.255.0',
         'users_address': users_address or '10.100.0.1 255.255.255.0',
-    })
+    } )
