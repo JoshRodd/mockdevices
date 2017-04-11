@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import os, re, getpass, ipaddress, sys
+import os, re, getpass, ipaddress, sys, socket
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
-HOST_PREFIX = 'Asa-'
-host_prefix = HOST_PREFIX
 remote_ip_addr, remote_port, local_ip_addr, local_port = '::1', 22, '::1', 22
 ssh_conn = os.environ[SSH_CONN_KEY]
 ssh_conn_l = os.environ[SSH_CONN_KEY].split()
@@ -19,8 +17,9 @@ if isinstance(local_ip_addr, ipaddress.IPv6Address):
         local_ip_addr = ipaddress.IPv4Address('127.0.0.1')
     else:
         raise Exception('IPv6 is not supported other than for loopback addresses like `::1\'.')
-local_ip_addr_str = str(local_ip_addr).replace('.','_')
-local_hostname = host_prefix + local_ip_addr_str
+local_hostname = socket.getfqdn(str(local_ip_addr))
+if local_hostname == str(local_ip_addr):
+    raise Exception('Cannot resolve IP address `{}\' to a hostname.'.format(local_ip_addr))
 
 def flush():
     try:
