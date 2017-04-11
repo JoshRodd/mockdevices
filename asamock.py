@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os, re, getpass, ipaddress, sys, locale, socket
+from ipaddress import ip_address, ip_network, IPv4Address, IPv6Address, IPv4Interface
 from datetime import datetime, timezone
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
@@ -15,9 +16,9 @@ except KeyError:
 local_user = getpass.getuser()
 enable_password = 'asapass'
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
-if isinstance(local_ip_addr, ipaddress.IPv6Address):
-    if local_ip_addr == ipaddress.IPv6Address('::1'):
-        local_ip_addr = ipaddress.IPv4Address('127.0.0.1')
+if isinstance(local_ip_addr, IPv6Address):
+    if local_ip_addr == IPv6Address('::1'):
+        local_ip_addr = IPv4Address('127.0.0.1')
     else:
         raise Exception('IPv6 is not supported other than for loopback addresses like `::1\'.')
 local_hostname = socket.getfqdn(str(local_ip_addr))
@@ -29,6 +30,32 @@ def flush():
         sys.stdout.flush()
     except:
         pass
+
+# local_ip_addr = ipaddress.IPv4Address('56.0.0.1')
+wan_prefixlen = 30
+wan_interface = IPv4Interface(str(local_ip_addr) + '/' + str(wan_prefixlen))
+wan_network = ip_network(wan_interface.network)
+wan_addess = ip_address(wan_interface.ip)
+
+print(wan_prefixlen)
+print(wan_network)
+print(wan_addess)
+
+#  8         'hostname': hostname or 'asa-site1-9-0-0-0',
+#  9         'wan_network': wan_network or '9.0.0.0 255.255.248.0',
+# 10         'wan_addess': wan_addess or '9.0.0.0 255.255.255.252',
+# 11         'wan_peer': wan_peer or '9.0.0.2 255.255.248.0',
+# 12         'mpi_network': mpi_network or '9.128.0.0 255.255.255.128',
+# 13         'mpi_address': mpi_address or '9.128.0.1 255.255.255.128',
+# 14         'mpe_network': mpe_network or '9.128.0.128 255.255.255.128',
+# 15         'mpe_address': mpe_address or '9.128.0.129 255.255.255.128',
+# 16         'users_network': users_network or '10.100.0.0 255.255.255.0',
+# 17         'users_address': users_address or '10.100.0.1 255.255.255.0',
+
+from asa_config import asa_config
+cfg = asa_config.asa_config(local_hostname, wan_network, wan_addess, mpi_address, mpe_address,
+                            users_address, users_network, mpe_network, mpi_network, wan_peer)
+
 
 print('''\
 
