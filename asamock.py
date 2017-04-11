@@ -3,6 +3,7 @@
 import os, re, getpass, ipaddress, sys, locale, socket
 from ipaddress import ip_address, ip_network, IPv4Address, IPv6Address, IPv4Interface
 from datetime import datetime, timezone
+from collections import defaultdict
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
 try:
@@ -32,32 +33,73 @@ def flush():
         pass
 
 # local_ip_addr = ipaddress.IPv4Address('56.0.0.1')
-wan_prefixlen = 30
-wan_interface = IPv4Interface(str(local_ip_addr) + '/' + str(wan_prefixlen))
-wan_network = ip_network(wan_interface.network)
-wan_addess = ip_address(wan_interface.ip)
+siteid = int(re.search(r"site(\d+)", local_hostname).group(1))
+kwds = {}
+prefixlen = {}
+ntwks_base = {}
+ntwks = {}
+ifaces = {}
+peers = {}
+offsets = {}
+prefixlen_noncontig = defaultdict(lambda: 0)
+prefixlen['wan'] = 30
+prefixlen['mpi'] = 25
+prefixlen_noncontig['mpi'] = 1
+prefixlen['mpe'] = 25
+prefixlen_noncontig['mpe'] = 1
+prefixlen['users'] = 24
+offsets['mpi'] = '0.128.0.0'
+offsets['mpe'] = '0.128.0.128'
+wan_interface = IPv4Interface(str(local_ip_addr) + '/' + str(prefixlen['wan']))
+ifaces['wan'] = wan_interface.network.with_netmask.replace('/', ' ')
+peers['wan'] = ip_address(wan_interface.ip) + 1
 
-print(wan_prefixlen)
-print(wan_network)
-print(wan_addess)
+wan_classa = IPv4Interface(str(local_ip_addr) + '/8').network.network_address
+wan_classa_base = wan_classa + ((siteid - 1) * pow(2, 32 - prefixlen['wan']))
+assert wan_classa_base == wan_interface.network.network_address
 
-#  8         'hostname': hostname or 'asa-site1-9-0-0-0',
-#  9         'wan_network': wan_network or '9.0.0.0 255.255.248.0',
-# 10         'wan_addess': wan_addess or '9.0.0.0 255.255.255.252',
-# 11         'wan_peer': wan_peer or '9.0.0.2 255.255.248.0',
-# 12         'mpi_network': mpi_network or '9.128.0.0 255.255.255.128',
-# 13         'mpi_address': mpi_address or '9.128.0.1 255.255.255.128',
-# 14         'mpe_network': mpe_network or '9.128.0.128 255.255.255.128',
-# 15         'mpe_address': mpe_address or '9.128.0.129 255.255.255.128',
-# 16         'users_network': users_network or '10.100.0.0 255.255.255.0',
-# 17         'users_address': users_address or '10.100.0.1 255.255.255.0',
+bases = {}
+bases['users'] = '10.100.0.0'
+
+interface_list = ['wan', 'mpe', 'mpi', 'users']
+
+ntwks_base['wan'] = ip_address(str(wan_classa))
+ntwks_base['mpi'] = ip_address(str(wan_classa + int(ip_address(offsets['mpi']))))
+ntwks_base['mpe'] = ip_address(str(wan_classa + int(ip_address(offsets['mpe']))))
+ntwks_base['users'] = ip_address(bases['users'])
+
+for iface in ntwks_base:
+    ntwks[iface] = ntwks_base[iface] + ((siteid - 1) * pow(2, 32 - prefixlen[iface] + prefixlen_noncontig[iface]))
+
+for iface in ntwks:
+    ifaces[iface] = IPv4Interface(str(ntwks[iface] + 1) + '/' + str(prefixlen[iface])).with_netmask.replace('/', ' ')
+
+for iface in ntwks:
+    ntwks[iface] = IPv4Interface(str(ntwks[iface]) + '/' + str(prefixlen[iface])).with_netmask.replace('/', ' ')
+
+kwds = {
+    'hostname':         local_hostname,
+    'wan_network':      ntwks['wan'],
+    'wan_peer':         peers['wan'],
+    'mpi_network':      ntwks['mpi'],
+    'mpi_address':      ifaces['mpi'],
+    'mpe_network':      ntwks['mpe'],
+    'mpe_address':      ifaces['mpe'],
+    'users_network':    ntwks['users'],
+    'users_address':    ifaces['users'],
+}
+
+for k, v in kwds.items():
+    print('{}: {}'.format(k, v))
 
 from asa_config import asa_config
-cfg = asa_config.asa_config(local_hostname, wan_network, wan_addess, mpi_address, mpe_address,
-                            users_address, users_network, mpe_network, mpi_network, wan_peer)
+cfg = asa_config(**kwds)
 
+print(cfg)
 
-print('''\
+sys.exit(0)
+
+motd = '''\
 
 ##############################################################################
 #                                                                            #
@@ -68,7 +110,10 @@ print('''\
 ##############################################################################
 Type help or '?' for a list of available commands.
 
-''', end='');
+'''
+
+print(motd, end='')
+
 sys.stdout.flush()
 
 in_enable=False
