@@ -1,0 +1,47 @@
+Network base:
+	9.0.0.0/8
+
+Number of devices:
+	512
+
+First management address:
+	9.0.0.1 (ibmasa-9-0-0-1)
+
+Last management address:
+	9.0.7.253 (ibmasa-9-0-7-253)
+
+Configure with:
+	sudo ./ifconfig-loopbacks -i lo0 --ncsubnet=9.0.0.1/21 --hostprefix=ibmasa
+
+Check with:
+	ifconfig -a | fgrep -e "9.0.0.1 " -e 9.0.7.253
+
+Expected output:
+	inet 9.0.0.1 netmask 0xffffffff
+	inet 9.0.7.253 netmask 0xffffffff
+
+Interfaces on each device, for 9.0.0.1:
+	9.0.0.0/30: "outside" (MPLS)
+		9.0.0.1: ASA management address
+		9.0.0.1: WAN link
+		9.0.0.2: WAN peer
+	9.128.0.0/25: "MPI"
+		9.128.0.0.1: MPI ASA management address
+	9.128.0.128/25: "MPE"
+		9.128.0.0.129: MPE ASA management address
+	10.100.0.0/24: "users"
+		10.100.0.1: 
+	default: 9.0.0.2
+
+Networks:
+	9.128.0.0/255.255.0.128: MPIs, subnetted into 512 /25s
+	9.128.0.128/255.255.0.128: MPEs, subnetted into 512 /25s
+	10.100.0.0/15: Users, subnetted into 512 /24s
+
+Mapping:
+	Site #1: 9.0.0.0 -> 9.128.0.0 -> 9.128.0.128 -> 10.100.0.0
+	Site #2: 9.0.0.4 -> 9.128.1.0 -> 9.128.1.128 -> 10.100.1.0
+	Site #64: 9.0.0.252 -> 9.128.63.0 -> 9.128.63.128 -> 10.100.63.0
+	Site #256: 9.0.4.0 -> 9.128.64.0 -> 9.128.64.128 -> 10.100.255.0
+	Site #257: 9.0.4.4 -> 9.129.0.0 -> 9.129.0.128 -> 10.101.0.0
+	Site #512: 9.0.7.252 -> 9.129.255.0 -> 9.129.255.128 -> 10.101.255.0
