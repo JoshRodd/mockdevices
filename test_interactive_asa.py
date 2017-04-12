@@ -750,8 +750,9 @@ object-group service MPI_SERVICES_2
 Building configuration...
 Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
 
-12647 bytes copied in 0.390 secs
-[OK]''',
+%Error copying system:/running-config (No Device)
+Error executing command
+[FAILED]''',
         None,
         None,
         None,
@@ -767,7 +768,6 @@ Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
         (TEST_ASA.check_exit,),
         True,
     ),
-
 
 ]
 
