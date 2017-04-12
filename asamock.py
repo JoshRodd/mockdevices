@@ -342,8 +342,6 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
 '''
     elif in_enable and ln == 'show ipv6 access-list':
         pass
-    elif in_enable and ln == 'write mem':
-        device.update_config_file()
     elif in_enable and re.match('^\s*$', ln):
         pass
     elif in_enable or ln in ('quit', 'logout', 'exit'):
