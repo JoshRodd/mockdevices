@@ -13,7 +13,7 @@ CONFIG_PROMPT = 'asav-1(config)# '
 ICMP_GROUP_PROMPT = 'config-icmp-object-group'
 SERVICE_GROUP_PROMPT = 'config-service-object-group'
 NETWORK_GROUP_PROMPT = 'config-network-object-group'
-SHOW_RUN = open('baseline_asa.conf').read()
+SHOW_RUN = open('test_asa.conf').read()
 
 
 def get_config_str():

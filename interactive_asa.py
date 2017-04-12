@@ -76,14 +76,29 @@ class ASA:
                         '(?P<svc_type>(eq |gt |range |object-group )'
                         '(?P<svc>.+)$))?)?$')
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, configstr=None):
+        assert config or configstr
         self.config_file = config
-        with open(config, "r+") as cfg:
-            self.config = list(cfg)
+        if configstr is None:
+            with open(config, "r") as cfg:
+                self.config = list(cfg)
+        else:
+            if self.config_file is not None:
+                try:
+                    with open(config, "r") as cfg:
+                        self.config = list(cfg)
+                except IOError:
+                    self.config = configstr.split('\n')
+            else:
+                self.config = configstr.split('\n')
+
         self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
         self.hostname = next(l for l in self.config if 'hostname' in l).split(' ')[1].rstrip()
         self.prompt_level = []
         self.prompt_end = '> '
+        self.in_error = False
+        self.in_exit = False
+
 
         self.object_groups = defaultdict(list)
         self.acls = defaultdict(list)
@@ -135,20 +150,23 @@ class ASA:
                             self.bound_object_groups.add(bound_obj)
 
     def update_config_file(self):
-        with open(self.config_file, 'w') as cfg:
-            self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
-            cfg.write(''.join(self.config_string))
+        self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
+        if self.config_file is not None:
+            with open(self.config_file, 'w') as cfg:
+                cfg.write(''.join(self.config_string))
 
     def get_prompt(self):
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
 
     def return_invalid_input(self):
+        self.in_error = True
         return (
             '{m:>{w}}\n'.format(m='^', w=len([i for i in self.get_prompt()])+1) +
             "ERROR: % Invalid input detected at \'^\' marker.\n"
         )
 
     def return_incomplete(self):
+        self.in_error = True
         return 'ERROR: % Incomplete command'
 
     def enable(self, cmd):
@@ -173,7 +191,7 @@ class ASA:
         if self.prompt_level:
             self.prompt_level.pop()
         else:
-            return 1
+            self.in_exit = True
 
     def show_run(self, cmd):
         return self.config_string
@@ -183,9 +201,9 @@ class ASA:
         output = ''
         for line in self.config:
             if section and re.search('^\s+\S', line):
-                output += line
+                output += line + '\n'
             elif re.search('^object-group ', line) and (re.search(' {}\s'.format(group_id), line) if group_id else True):
-                output += line
+                output += line + '\n'
                 section = True
             elif section:
                 break
@@ -197,6 +215,7 @@ class ASA:
     def show_access_list(self, cmd, access_list=None):
 
         if access_list and access_list not in self.acls:
+            self.in_error = True
             return 'ERROR: access-list <{}> does not exist\n'.format(access_list) if access_list else ''
 
         output = []
@@ -334,8 +353,10 @@ class ASA:
                 # return 'Removing object-group (<id>) not allowed, it is being used.'
             elif acl_match:
                 if acl_match.group('name') in self.acls:
+                    self.in_error = True
                     return 'Specified access-list does not exist'
                 else:
+                    self.in_error = True
                     return 'ERROR: access-list <{}> does not exist'.format(acl_match.group('name'))
             else:
                 return self.return_invalid_input()
@@ -422,6 +443,7 @@ class ASA:
             obj = a.groupdict()[group]
             if obj:
                 if obj not in self.object_groups:
+                    self.in_error = True
                     return 'ERROR: specified object group <{}> not found'.format(obj)
 
         if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
@@ -461,7 +483,7 @@ class ASA:
         (r'^\s*end', end),
         (r'^\s*ena?b?l?e?', enable),
         (r'^\s*confi?g? te?r?m?i?n?a?l?', config_t),
-        (r'^\s*exit', exit),
+        (r'^\s*(ex|exit|logout|q|quit)', exit),
         (r'^\s*no', no),
         (r'^\s*access-l', access_list),
         (r'^\s*object-', object_group),
@@ -479,6 +501,15 @@ class ASA:
                 return func(self, command, **args)
         if not valid:
             return self.return_invalid_input()
+
+    def check_error(self):
+        if self.in_error:
+            self.in_error = False
+            return True
+        return False
+
+    def check_exit(self):
+        return self.in_exit
 
 
 def asa_hash(ace):

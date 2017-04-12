@@ -28,11 +28,13 @@ install:	bin/asabin asash Makefile
 	mkdir -p "$(PREFIX)/bin"
 	install -m 755 bin/asabin "$(PREFIX)/bin"
 	install -m 755 asash "$(PREFIX)/bin"
-	install -m 755 asamock.py "$(PREFIX)/bin"
+#	install -m 755 asamock.py "$(PREFIX)/bin"
+	ln -sf /Users/*/Documents/src/mockdevices/asamock.py /usr/local/bin/asamock.py
 	install -m 755 ifconfig-loopbacks "$(PREFIX)/bin"
 	mkdir -p /opt/local/bin
 	ln -sf ../../../usr/local/bin/asabin /opt/local/bin/asabin
-	ln -sf ../../../usr/local/bin/asamock.py /opt/local/bin/asamock.py
+#	ln -sf ../../../usr/local/bin/asamock.py /opt/local/bin/asamock.py
+	ln -sf /Users/*/Documents/src/mockdevices/asamock.py /opt/local/bin/asamock.py
 	ln -sf ../../../usr/local/bin/asash /opt/local/bin/asash
 
 commit:	test install clean Makefile
