@@ -19,8 +19,11 @@ def template(hostname=None, wan_network=None, wan_addess=None, mpi_address=None,
     }
     with open('baseline_asa.conf') as cfg:
         env = Environment()
-        t = env.from_string(cfg.read())
-    return t.render(fields)
+        c = cfg.read()
+        t = env.from_string(c)
+        print(c)
+        rc = t.render(fields)
+    return rc
 
 
-print(template())
+template()
