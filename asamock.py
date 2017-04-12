@@ -124,7 +124,7 @@ def flush():
 
 grps = re.search(r"site(\d+)", local_hostname)
 if grps:
-    siteid = int(group(1))
+    siteid = int(grps.group(1))
 else:
     siteid = 1
 kwds = {}
@@ -191,7 +191,7 @@ kwds = {
     'management_address': ifaces['management'],
 }
 
-device = ASA(configstr=asa_config(**kwds))
+device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
 
 motd = '''\
 
@@ -323,6 +323,8 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
 '''
     elif in_enable and ln == 'show ipv6 access-list':
         pass
+    elif in_enable and ln == 'write mem':
+        device.update_config_file()
     elif in_enable and re.match('^\s*$', ln):
         pass
     elif in_enable or ln in ('quit', 'logout', 'exit'):

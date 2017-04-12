@@ -306,5 +306,5 @@ def asa_config(hostname=None, wan_network=None, wan_address=None, mpi_address=No
         'users_network': users_network or '10.100.0.0 255.255.255.0',
         'users_address': users_address or '10.100.0.1 255.255.255.0',
         'management_network': management_network or '172.16.0.0 255.255.254.0',
-        'management_address': management_address or '172.16.1.126 255.255.254.0'
+        'management_address': management_address or '172.16.1.99 255.255.254.0'
     } )
