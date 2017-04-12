@@ -23,6 +23,7 @@ uninstall:
 	rm -f /opt/local/bin/asabin
 	rm -f /opt/local/bin/asash
 	rm -f /opt/local/bin/asamock.py
+	./install-shells.sh --uninstall /usr/local/bin/asabin
 
 install:	bin/asabin asash Makefile
 	mkdir -p "$(PREFIX)/bin"
@@ -36,6 +37,7 @@ install:	bin/asabin asash Makefile
 #	ln -sf ../../../usr/local/bin/asamock.py /opt/local/bin/asamock.py
 	ln -sf /Users/*/Documents/src/mockdevices/asamock.py /opt/local/bin/asamock.py
 	ln -sf ../../../usr/local/bin/asash /opt/local/bin/asash
+	./install-shells.sh /usr/local/bin/asabin
 
 commit:	test install clean Makefile
 	git commit --all
