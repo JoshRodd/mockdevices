@@ -34,7 +34,7 @@ Last management address:
 	9.0.7.253 (ibmasa-site512-9-0-7-253)
 
 Configure with:
-	sudo ./ifconfig-loopbacks -i lo0 --ncsubnet=9.0.0.1/21 --hostprefix=ibmasa
+	sudo ./ifconfig-loopbacks -i lo0 --ncsubnet=9.0.0.1/21 --hostprefix=ibmasa-site
 
 Check with:
 	ifconfig -a | fgrep -e "9.0.0.1 " -e 9.0.7.253
