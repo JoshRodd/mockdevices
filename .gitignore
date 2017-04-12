@@ -1,4 +1,5 @@
 test_asa.conf
+conf-*.txt
 
 # Local binaries
 asabin

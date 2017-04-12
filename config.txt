@@ -1,3 +1,26 @@
+This is an example of how to use noncontiguous netmasks with a large, private
+network. The example here uses IBM's class A, 9.0.0.0/8. You can adapt it to
+any network including the 10.0.0.0/8 network.
+
+This example uses ASAs, so the devices are called "ibmasa-site#-9-1-2-3".
+
+The asamock.py program is written with the assumption that a network looks
+like below. It deduces which class A network is in use based upon the
+incoming IP address, and assumes the ASA management address lives on a /30.
+You can execute it like this:
+
+	./asamock.py 9.0.0.1
+
+If you are running inside SSH, it checks SSH's environment variables to
+see on what interface you connected. If you configure your machine with
+an alias of 9.0.0.1, SSH to that machine at 9.0.0.1, and execute the
+asamock.py program, it will create a valid configuration for an ASA network
+device in that network.
+
+By running `make install' and setting a login shell to
+/usr/local/bin/asabin, the above can look exactly like a real ASA. You may need
+to execute ./install-shells.sh /usr/local/bin/asabin as well.
+
 Network base:
 	9.0.0.0/8
 
@@ -5,13 +28,13 @@ Number of devices:
 	512
 
 First management address:
-	9.0.0.1 (ibmasa-9-0-0-1)
+	9.0.0.1 (ibmasa-site1-9-0-0-1)
 
 Last management address:
-	9.0.7.253 (ibmasa-9-0-7-253)
+	9.0.7.253 (ibmasa-site512-9-0-7-253)
 
 Configure with:
-	sudo ./ifconfig-loopbacks -i lo0 --ncsubnet=9.0.0.1/21 --hostprefix=ibmasa
+	sudo ./ifconfig-loopbacks -i lo0 --ncsubnet=9.0.0.1/21 --hostprefix=ibmasa-site
 
 Check with:
 	ifconfig -a | fgrep -e "9.0.0.1 " -e 9.0.7.253
