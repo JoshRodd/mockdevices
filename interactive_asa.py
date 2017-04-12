@@ -298,6 +298,8 @@ Error executing command
         pass
 
     def no(self, command):
+        if 'config' not in self.prompt_level:
+            return self.return_invalid_input()
         new_config = self.config[:]
         self.prompt_level = ['config']
         self.current_object_group = False
