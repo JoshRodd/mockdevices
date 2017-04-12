@@ -6,7 +6,7 @@
 ASA Version 9.5(2)204
 !
 terminal width 511
-hostname {{ hostname }}
+hostname localhost
 enable password 2KFQnbNIdI.2KYOU encrypted
 xlate per-session deny tcp any4 any4
 xlate per-session deny tcp any4 any6
@@ -20,32 +20,32 @@ passwd 2KFQnbNIdI.2KYOU encrypted
 names
 !
 interface GigabitEthernet0/0
- description to ** MPLS Uplink {{ wan_network }} **
+ description to ** MPLS Uplink 127.0.0.0 255.255.255.252 **
  duplex full
  nameif outside
  security-level 0
- ip address {{ wan_address }}
+ ip address 127.0.0.1 255.255.255.252
 !
 interface GigabitEthernet0/1
  description to ** Internal MPI Network **
  duplex full
  nameif MPI
  security-level 100
- ip address {{ mpi_address }}
+ ip address 127.128.0.1 255.255.255.128
 !
 interface GigabitEthernet0/2
  description ** Internal MPE Network **
  duplex full
  nameif MPE
  security-level 90
- ip address {{ mpe_address }}
+ ip address 127.128.0.129 255.255.255.128
 !
 interface GigabitEthernet0/3
  description to ** Internal Users **
  shutdown
  nameif users
  no security-level
- ip address {{ users_address }}
+ ip address 10.100.0.1 255.255.255.0
 !
 interface Management0/0
  description to ** MGMT **
@@ -53,12 +53,12 @@ interface Management0/0
  management-only
  nameif mgmt
  security-level 100
- ip address {{ management_address }}
+ ip address 172.16.0.1 255.255.254.0
 !
 ftp mode passive
 same-security-traffic permit inter-interface
 object-group network INTERNAL_USERS
- network-object {{ users_network }}
+ network-object 10.100.0.0 255.255.255.0
 object-group network ENCLAVE_USER_SERVICES
  network-object 10.100.70.160 255.254.255.252
 object-group network INTERNET_SERVERS
@@ -76,9 +76,9 @@ object-group network ENCLAVE_ORDERING_SERVERS
  network-object 10.100.58.0 255.255.255.0
  network-object 10.100.60.0 255.255.255.0
 object-group network INTERNAL_MPE_SERVERS
- network-object {{ mpe_network }}
+ network-object 127.128.0.128 255.255.255.128
 object-group network INTERNAL_MPI_SERVERS
- network-object {{ mpi_network }}
+ network-object 127.128.0.0 255.255.255.128
 object-group network MPE_SERVERS
  network-object 10.0.0.128 255.0.0.192
 object-group network MPI_SERVERS
@@ -144,7 +144,7 @@ access-group outside-in in interface outside
 access-group MPI-in in interface MPI
 access-group MPE-in in interface MPE
 access-group users-in in interface users
-route outside 0.0.0.0 0.0.0.0 {{ wan_peer }}  1
+route outside 0.0.0.0 0.0.0.0 127.0.0.2  1
 timeout xlate 3:00:00
 timeout pat-xlate 0:00:30
 timeout conn 1:00:00 half-closed 0:10:00 udp 0:02:00 sctp 0:02:00 icmp 0:00:02

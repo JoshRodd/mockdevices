@@ -29,34 +29,15 @@
 import re
 from collections import defaultdict
 import binascii
-# import pprint
+# from pprint import pprint
 
 
 class ASA:
-    object_group_re = re.compile('^object-group (?P<type>\S+) (?P<name>\S+)')
-    service_object_re = re.compile('\s+service-object (?P<protocol>\S+) ?((?P<type>\S+) ?((?P<operator>\S+) (?P<svc>.+)$)?)?')
-    port_object_re = re.compile('\s+port-object (?P<object>.*)$')
-    network_object_re = re.compile('\s+network-object (?P<object>.*)')
-    icmp_object_re = re.compile('\s+icmp-object (?P<object>.*)')
-    acl_re_old = re.compile('access-list '
-                            '(?P<name>\S+)( line '
-                            '(?P<line>\d+))? '
-                            '(?P<type>extended|remark'
-                            '(?P<remark>.*))( '
-                            '(?P<action>permit|deny)( '
-                            '(?P<protocol>\d{1,3}|object-group '
-                            '(?P<svc_group>\S+)|[a-z]+) '
-                            '(?P<src>'
-                            '(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
-                            '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                            '(?P<src_group>\S+)|any?) '
-                            '(?P<dst>(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} '
-                            '([0-9]{1,3}\.){3}[0-9]{1,3})|host '
-                            '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                            '(?P<dst_group>\S+)|any)( '
-                            '(?P<svc_type>(eq |gt |range |object-group )'
-                            '(?P<svc>.+)$))?)?)?$')
-
+    object_group_re = re.compile('^\s*object-group (?P<type>\S+) (?P<name>\S+)')
+    service_object_re = re.compile('^\s*service-object (?P<protocol>\S+) ?((?P<type>\S+) ?((?P<operator>\S+) (?P<svc>.+)$)?)?')
+    port_object_re = re.compile('^\s*port-object (?P<object>.*)$')
+    network_object_re = re.compile('^\s*network-object (?P<object>.*)')
+    icmp_object_re = re.compile('^\s*icmp-object (?P<object>.*)')
     acl_re = re.compile('access-list '
                         '(?P<name>\S+)( line '
                         '(?P<line>\d+))? '
@@ -74,19 +55,19 @@ class ASA:
                         '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
                         '(?P<dst_group>\S+)|any\d?)( '
                         '(?P<svc_type>(eq |gt |range |object-group )'
-                        '(?P<svc>.+)$))?)?$')
+                        '(?P<svc>.+)$))?)?\s*$')
 
     def __init__(self, config=None, configstr=None):
         assert config or configstr
         self.config_file = config
         if configstr is None:
             with open(config, "r") as cfg:
-                self.config = list(cfg)
+                self.config = [l.strip() for l in list(cfg)]
         else:
             if self.config_file is not None:
                 try:
                     with open(config, "r") as cfg:
-                        self.config = list(cfg)
+                        self.config = [l.rstrip() for l in list(cfg)]
                 except IOError:
                     self.config = configstr.split('\n')
             else:
@@ -99,13 +80,14 @@ class ASA:
         self.in_error = False
         self.in_exit = False
 
-
-        self.object_groups = defaultdict(list)
-        self.acls = defaultdict(list)
         self.update_dicts(self.config)
 
     def update_dicts(self, lines):
         self.bound_object_groups = set()
+
+        self.object_groups = defaultdict(list)
+        self.acls = defaultdict(list)
+        self.object_group_types = dict()
 
         obj = 0
         object_group_name = ''
@@ -115,18 +97,21 @@ class ASA:
                 obj = True
                 object_group_name = object_group.group('name')
                 object_group_type = object_group.group('type')
-                self.object_groups[object_group_type] = object_group_type
+                self.object_group_types[object_group_name] = object_group_type
                 self.object_groups[object_group_name] = []
                 continue
             elif obj:
                 network_object = self.network_object_re.search(line)
                 service_object = self.service_object_re.search(line)
                 port_object = self.port_object_re.search(line)
+                icmp_object = self.icmp_object_re.search(line)
                 if network_object:
                     self.object_groups[object_group_name].append({n: network_object.group(n) for n in network_object.groupdict()})
                 elif service_object:
                     self.object_groups[object_group_name].append({n: service_object.group(n) for n in service_object.groupdict()})
                 elif port_object:
+                    self.object_groups[object_group_name].append({n: port_object.group(n) for n in port_object.groupdict()})
+                elif icmp_object:
                     self.object_groups[object_group_name].append({n: port_object.group(n) for n in port_object.groupdict()})
                 else:
                     obj = False
@@ -136,7 +121,7 @@ class ASA:
                     name = acl.group('name')
                     self.acls[name].append({n: acl.group(n) for n in acl.groupdict()})
                     self.acls[name][-1]['line'] = self.acls[name][-1]['line'] + 1 if self.acls[name][-1]['line'] else 1
-                    self.acls[name][-1]['acl'] = line
+                    self.acls[name][-1]['acl'] = line.strip()
 
                     groups = ['svc_group', 'src_group', 'dst_group']
                     svc = acl.groupdict()['svc_type']
@@ -149,11 +134,27 @@ class ASA:
                         if bound_obj:
                             self.bound_object_groups.add(bound_obj)
 
-    def update_config_file(self):
+    def update_config(self):
         self.config_string = ''.join([i.rstrip() + '\n' for i in self.config])
+
+    def write_memory(self, cmd):
         if self.config_file is not None:
             with open(self.config_file, 'w') as cfg:
                 cfg.write(''.join(self.config_string))
+                return '''\
+Building configuration...
+Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
+
+12647 bytes copied in 0.390 secs
+[OK]'''
+        else:
+            return '''\
+Building configuration...
+Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
+
+%Error copying system:/running-config (Not enough space on device)
+Error executing command
+[FAILED]'''
 
     def get_prompt(self):
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
@@ -202,7 +203,7 @@ class ASA:
         for line in self.config:
             if section and re.search('^\s+\S', line):
                 output += line + '\n'
-            elif re.search('^object-group ', line) and (re.search(' {}\s'.format(group_id), line) if group_id else True):
+            elif re.search('^object-group ', line) and (re.search('{}'.format(group_id), line) if group_id else True):
                 output += line + '\n'
                 section = True
             elif section:
@@ -319,15 +320,15 @@ class ASA:
             if obj_id_match.group('name') in self.bound_object_groups:
                 return 'Removing object-group ({}) not allowed, it is being used.'.format(obj_match.group('name'))
 
-        line_num = 0
+        line_num = 1
         for index, line in enumerate(self.config):
             if acl_line_match:
-                if acl_line_match.group('name') in line:
-                    line_num += 1
                 if line_num == int(acl_line_match.group('number')):
                     new_config.pop(index)
                     section = True
                     break
+                if acl_line_match.group('name') in line:
+                    line_num += 1
 
             if command.replace('no ', '').strip() in line.strip():
                 remove = index
@@ -343,7 +344,7 @@ class ASA:
         if section:
             self.prompt_level = ['config']
             self.config = new_config[:]
-            self.update_config_file()
+            self.update_config()
             self.update_dicts(self.config)
         else:
             if obj_match:
@@ -368,14 +369,14 @@ class ASA:
             return self.return_invalid_input()
 
         if o:
-            if o.group('name') in self.object_groups and self.object_groups[o.group('type')] != o.group('type'):
+            if o.group('name') in self.object_groups and self.object_group_types[o.group('name')] != o.group('type'):
                 return 'An object-group with the same id but different type (service) exists\n'
             elif o.group('type') == 'icmp':
-                self.prompt_level = [self.prompt_level[0], 'config-icmp-object-group']
+                self.prompt_level = ['config', 'config-icmp-object-group']
             elif o.group('type') == 'service':
-                self.prompt_level = [self.prompt_level[0], 'config-service-object-group']
+                self.prompt_level = ['config', 'config-service-object-group']
             elif o.group('type') == 'network':
-                self.prompt_level = [self.prompt_level[0], 'config-network-object-group']
+                self.prompt_level = ['config', 'config-network-object-group']
             self.current_object_group = o.group('name')
             if o.group('name') not in self.object_groups:
                 new_config = self.config[:]
@@ -388,10 +389,10 @@ class ASA:
                         self.current_line = n + 1
                         break
                 self.config = new_config[:]
-                self.update_config_file()
+                self.update_config()
                 self.update_dicts(self.config)
             else:
-                self.current_line = next((i for i, j in enumerate(self.config) if line in j)) + 1
+                self.current_line = next((i for i, j in enumerate(self.config) if line.strip() in j)) + 1
         else:
             return self.return_invalid_input()
 
@@ -416,10 +417,10 @@ class ASA:
         else:
             return self.return_invalid_input()
 
-        new_config.insert(self.current_line, line)
+        new_config.insert(self.current_line, ' {}'.format(line.strip()))
         self.current_line += 1
         self.config = new_config[:]
-        self.update_config_file()
+        self.update_config()
         self.update_dicts(self.config)
 
     def access_list(self, line):
@@ -433,6 +434,7 @@ class ASA:
 
         if not a:
             return self.return_invalid_input()
+        self.prompt_level = ['config']
 
         groups = ['svc_group', 'src_group', 'dst_group']
         svc = a.groupdict()['svc_type']
@@ -445,20 +447,23 @@ class ASA:
                 if obj not in self.object_groups:
                     self.in_error = True
                     return 'ERROR: specified object group <{}> not found'.format(obj)
+                if not self.object_groups[obj]:
+                    self.in_error = True
+                    return 'ERROR: specified object group <{}> is empty'.format(obj)
 
         if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
-            line_num = 0
+            line_num = 1
             for n, l in enumerate(self.config):
-                if a.groupdict()['line']:
-                    if a.group('name') in l:
-                        line_num += 1
-                    if line_num == int(a.group('line')):
-                        new_config.insert(n, re.sub(' line \d+', '', line))
-                        break
                 if re.search('^access-list', l):
                     asection = True
-                if a.group('name') in l:
+                if asection and a.group('name') in l:
                     section = True
+                if a.groupdict()['line']:
+                    if line_num == int(a.group('line')) and section:
+                        new_config.insert(n, re.sub(' line \d+', '', line))
+                        break
+                    if section:
+                        line_num += 1
                 if section and a.group('name') not in l:
                     new_config.insert(n, re.sub(' line \d+', '', line))
                     break
@@ -472,14 +477,23 @@ class ASA:
 
         self.current_object_group = False
         self.config = new_config[:]
-        self.update_config_file()
+        self.update_config()
         self.update_dicts(self.config)
+
+    patterns = {
+        'show': '^\s*sh(ow|o)?',
+        'running-config': 'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?',
+        'object-group': 'object-g(roup|rou|ro|r)?',
+        'config terminal': '^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e',
+        'enable': 'en(able|abl|ab|a)?',
+        'access-list': 'access-l(ist|is|i)?'
+    }
 
     commands = [
         (r'^\s*sho?w? access-li?s?t?\S*( (?P<access_list>\S+))?', show_access_list),
         (r'^\s*sho?w? ipv6? a', show_ipv6_access_list),
-        (r'^\s*sho?w? object-g?r?o?u?p?( \S+ (?P<group_id>\S+))?', show_object_group),
-        (r'^\s*sho?w? runi?n?g?-?c?o?n?f?i?g?', show_run),
+        (r'^\s*sh(ow|o)? object-g(roup|rou|ro|r)?( id (?P<group_id>\S+))?\s*$', show_object_group),
+        (r'^\s*sh(ow|o)? run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?', show_run),
         (r'^\s*end', end),
         (r'^\s*ena?b?l?e?', enable),
         (r'^\s*confi?g? te?r?m?i?n?a?l?', config_t),
@@ -488,6 +502,7 @@ class ASA:
         (r'^\s*access-l', access_list),
         (r'^\s*object-', object_group),
         (r'\s*(port-|service-|icmp-|network-)', object_group_element),
+        (r'write memory', write_memory),
     ]
 
     def send(self, command):
