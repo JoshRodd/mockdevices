@@ -45,7 +45,7 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echocha
                     tcsetattr_flags |= termios.TCSASOFT
                 try:
                     termios.tcsetattr(fd, tcsetattr_flags, new)
-                    passwd = _raw_input(prompt, stream, input)
+                    passwd = _raw_input(prompt, stream, input, echochar)
                 finally:
                     termios.tcsetattr(fd, tcsetattr_flags, old)
                     stream.flush()  # issue7208
@@ -55,11 +55,12 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echocha
                     # instead of leaving the terminal in an unknown state.
                     raise
 
-        stream.write('*' * (len(passwd)))
+#        stream.write('*' * (len(passwd)))
         stream.write('\n')
+        stream.flush()
         return passwd
 
-def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin):
+def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin, echochar='*'):
     # This doesn't save the string in the GNU readline history.
     prompt = str(prompt)
     if prompt:
@@ -72,15 +73,33 @@ def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin):
             stream.write(prompt)
         stream.flush()
     # NOTE: The Python C API calls flockfile() (and unlock) during readline.
-    line = input.readline()
-    if not line:
-        raise EOFError
-    if line[-1] == '\n':
-        line = line[:-1]
-    return line
+    #line = input.readline()
+    line = ''
+    ch = ''
+    while True:
+        #ch = raw_inputch(input)
+        fd = input.fileno()
+        old_settings = termios.tcgetattr(fd)
+        tty.setraw(fd)
+        ch = input.read(1)
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        chb = bytes(ch, 'ascii')
+        if ch == '\b' or chb == b'\x7f':
+            if len(line) > 0:
+                line = line[:-1]
+                stream.write('\b \b')
+                stream.flush()
+        elif ch in ('\n', '\r'):
+            return line
+        elif chb == b'\0':
+            continue
+        else:
+            line = line + ch
+            stream.write('*')
+            stream.flush()
 
-def raw_inputch(inp=sys.stdin):
-    fd = inp.fileno()
+def raw_inputch(input=sys.stdin):
+    fd = input.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
         tty.setraw(sys.stdin.fileno())
@@ -220,7 +239,7 @@ outp = ''
 while not device.check_exit():
     ln = input(device.get_prompt());
     if ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
-        enablepasswordln = asa_getpass('Password: ')
+        enablepasswordln = asa_getpass()
         if '{}'.format(enable_password) != enablepasswordln:
             print('Invalid password.')
         else:
