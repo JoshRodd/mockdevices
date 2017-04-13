@@ -52,7 +52,7 @@ test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bi
 	true
 #	echo enable | ./asabin-test.sh asabin
 #	echo enable | ./asabin-test.sh bin/asabin
-#	./ifconfig-loopbacks-test.sh ifconfig-loopbacks
+#	./test_ifconfig-loopbacks.sh ifconfig-loopbacks
 #	./asamock.py
 
 $(DEBUG).SILENT:	test
