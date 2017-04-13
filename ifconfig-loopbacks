@@ -2,12 +2,21 @@
 
 scriptname=ifconfig-loopbacks
 version=0.1
+
+ifname=lo0
+UNAME=$(uname) || exit
+if [ "$UNAME" == "Darwin" ]; then ifname=lo0;
+elif [ "$UNAME" == "Linux" ]; then ifname=lo;
+else
+	echo "Error: the $UNAME platform is not supported." >&2
+	exit 1
+fi
 if [ "$1" == "--help" ]; then
 	cat <<EOF
 Usage: $0 [OPTION]...
 Configure the loopback interface with a large number of alias addresses.
 
--alias, --no-alias	remove the aliases instead of adding them
+-alias, --no-alias, -d	remove the aliases instead of adding them
 --interface=if, -i if	use the interface \`if' instead of the default
 			interface \`$ifname'
 -f, --force		adds the aliases back even if they seem to already
@@ -42,7 +51,6 @@ c=2
 d=0
 e=23
 
-ifname=lo0
 dryrun=""
 nc=""
 netmask=255.255.255.255
@@ -51,14 +59,8 @@ removealias=""
 hostprefix=""
 listonly=""
 HOSTSFILE=/etc/hosts
-UNAME=$(uname) || exit
-if [ "$UNAME" == "Darwin" ]; then ifname=lo0;
-elif [ "$UNAME" == "Linux" ]; then ifname=lo;
-else
-	echo "Warning: the $UNAME platform is not supported." >&2
-fi
 while [ "$1" != "" ]; do
-	if [ "$1" == "-alias" -o "$1" == "--no-alias" ]; then
+	if [ "$1" == "-alias" -o "$1" == "--no-alias" -o "$1" == "-d" -o "$1" == "down" ]; then
 		removealias=1
 		shift
 	elif [ "$1" == "--force" -o "$1" == "-f" ]; then
@@ -126,7 +128,7 @@ while [ "$1" != "" ]; do
 	fi
 done
 
-if [ $hostprefix != "" -a ! -w "$HOSTSFILE" ]; then
+if [ \( "$hostprefix" != "" \) -a \( ! -w "$HOSTSFILE" \) ]; then
 	echo "The file \`$HOSTSFILE' is not writeable." >&2
 	exit 1
 fi
@@ -140,7 +142,8 @@ if [ ! "$nc" ]; then
 	cstart="$c"
 	cend=$[$cstart + 1]
 	dstart=2
-	dend=251
+#	dend=251
+	dend=3
 	dincr=1
 	total=$[($dend - $dstart + 1) * ($cend - $cstart + 1)]
 fi
@@ -159,12 +162,65 @@ if [ "$nc" == "1" ]; then
 	total=$[((($dend - $dstart) / $dincr) + 1) * ($cend - $cstart + 1)]
 fi
 
+IFCONFIGA="ifconfig -a"
+IFCONFIGA="cat x"
+
+lastifnumber=-1
+lastifnumberpat="#lastifnumber="
+if [ "$UNAME" == "Linux" ]; then
+	checknextline=no
+	possibleif=""
+	while read line; do
+		if [[ "$line" == "$ifname":* ]]; then
+			ifnumber=${line//$ifname:/}
+			if [ "$ifnumber" -gt "$lastifnumber" ]; then
+				lastifnumber=$ifnumber
+			fi
+		fi
+		if [ "$checknextline" == "yes" ]; then
+			checknextline=no
+			if [[ $line == "$ifname":* ]]; then
+				possibleif=$line
+				checknextline=yes
+			else
+				ifaddr=$line
+				echo $ifname $ifnumber $ifaddr
+				declare "ifaddr_$ifname_$ifnumber=$ifaddr"
+				ifaddr=${ifaddr//./_}
+				declare "ifname_$ifaddr=$ifname:$ifnumber"
+			fi
+		else
+			if [[ "$line" == "$ifname":* ]]; then
+				possibleif=$line
+				checknextline=yes
+			else
+				possibleif=""
+				checknextline=no
+			fi
+		fi
+	done < <(
+		$IFCONFIGA | sed -n \
+		-e 's/^\('"$ifname"':[0-9][0-9]*\)[^0-9].*$/\1/p' \
+		-e "$(printf 's/^[\t ]*inet addr:\([0-9.]*\)[\t ][\t ]*Mask:'"$netmask"'.*$/\\1/p')"
+		)
+fi
+echo "last IF: $ifname:$lastifnumber"
+echo "lo:23976 is: $ifaddr_23976"
+echo "99.99.3.3 is: $ifname_99_99_3_3"
+
+exit 0
+
 for c in $(seq $cstart $cend); do
 	for d in $(seq $dstart $dincr $dend); do
 		ifaddr=$a.$b.$c.$d
 		ifaddr2=$a-$b-$c-$d
 		ifaddrpat=$a\\.$b\\.$c\\.$d
-		read existingifaddr
+		read existingifaddr optionalifname
+		if [ "$optionalifname" == "" ]; then
+			specificifname="$ifname"
+		else
+			specificifname="$optionalifname"
+		fi
 		if [ "$listonly" == "1" ]; then
 			echo $ifaddr
 		fi
@@ -174,28 +230,43 @@ for c in $(seq $cstart $cend); do
 				hostentprintf="$(printf "%s\\\\t%s%s-%s\\\\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
 				hostpattern="$(printf "/^\\s*%s[[:space:]]+%s-%s\\s*$/" "$ifaddrpat" "$hostprefix" "$ifaddr2")"
 			fi
-			if [ "$dryrun" ]; then
-				echo ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255
+			if [ "$removealias" -a "$dryrun" ]; then
+				echo $specificifname $ifname $ifaddr $existingifaddr
+				if [ "$specificifname" != "$ifname" -a "$ifaddr" == "$existingifaddr" ]; then
+					echo ifconfig "$specificifname" down
+				elif [ "$specificifname" == "$ifname" ]; then
+					echo ifconfig "$specificifname" -alias $ifaddr netmask "$netmask"
+				fi
 				if [ "$hostprefix" != "" ]; then
 					echo sed -Ei \"\" \'"$hostpattern"\'d \'"$HOSTSFILE"\'
 				fi
-			else
-				ifconfig "$ifname" -alias $ifaddr netmask 255.255.255.255 2>/dev/null
+			elif [ "$removealias" -a ! "$dryrun" ]; then
+				ifconfig "$specificifname" -alias $ifaddr netmask "$netmask" 2>/dev/null
 				if [ "$hostprefix" != "" ]; then
 					sed -Ei "" "$hostpattern"d "$HOSTSFILE" || exit
 				fi
 			fi
 			if [ ! "$removealias" ]; then
+				if [ "$NEXTIF" != "" ]; then
+					nextifname=$ifname:$NEXTIF
+					NEXTIF=$[$NEXTIF + 1]
+				else
+					nextifname="$ifname"
+				fi
 				if [ "$dryrun" ]; then
-					echo ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
+					if [ "$ifname" != "$nextifname" ]; then
+						echo ifconfig "$nextifname" $ifaddr netmask "$netmask"
+					else
+						echo ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
+					fi
 					if [ "$hostprefix" != "" ]; then
 						echo printf \'"$hostentprintf"\' \>\> \'"$HOSTSFILE"\'
 					fi
 				else
-					ifconfig "$ifname" alias $ifaddr netmask 255.255.255.255
+					ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
 					rc=$?
 					if [ $rc -gt 0 ]; then
-						echo Cannot alias $ifname $ifaddr\; are you root\?
+						echo Cannot alias $specificifname $ifaddr\; are you root\?
 						exit $rc
 					fi
 					if [ "$hostprefix" != "" ]; then
@@ -210,7 +281,25 @@ for c in $(seq $cstart $cend); do
 			counter=$[$counter + 1]
 		fi
 	done
-done < <(ifconfig lo0 | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4)
+done < <(
+
+if [ "$UNAME" == "Darwin" ]; then
+
+	ifconfig "$ifname" | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
+
+elif [ "$UNAME" == "Linux" ]; then
+	$IFCONFIGA | sed -n \
+		-e 's/^\('"$ifname"':[0-9][0-9]*\)[^0-9].*$/\1/p' \
+		-e "$(printf 's/^[\t ]*inet addr:\([0-9.]*\)[\t ][\t ]*Mask:'"$netmask"'.*$/\\1/p')" |
+			while read line; do
+				if [[ $line == "$ifname":* ]]; then
+					read nextline
+					echo $nextline $line
+				fi
+			done |
+				sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
+
+fi )
 
 if [ "$progress" -a "$progressshown" ]; then
 	echo -e "\r100% completed"
