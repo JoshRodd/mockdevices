@@ -152,7 +152,7 @@ Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
 Building configuration...
 Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
 
-%Error copying system:/running-config (Not enough space on device)
+%Error copying system:/running-config (No Device)
 Error executing command
 [FAILED]'''
 
