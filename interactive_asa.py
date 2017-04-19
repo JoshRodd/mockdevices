@@ -282,9 +282,8 @@ Error executing command
                         if 'object-group' in ace['svc_type']:
                             for obj in self.object_groups[ace['svc']]:
                                 services[-1][1] = ' {}'.format(obj['object'])
-
                         else:
-                            services[-1][1] = [' {}{}'.format(ace['svc_type'], ace['svc'])]
+                            services[-1][1] = ' {}'.format(ace['svc_type'])
 
                 if ace['src_group']:
                     for obj in self.object_groups[ace['src_group']]:
