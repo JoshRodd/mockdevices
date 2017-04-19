@@ -4,10 +4,15 @@
 #include <unistd.h>
 
 const char *shellexec = "asash";
+const char *absshellexec = "/opt/local/bin/asash";
 const char *searchpath = "/usr/local/bin:/opt/local/bin:/opt/bin:/usr/bin:/bin:/usr/sbin:/sbin:.";
 
 int main(int argc, char *argv[]) {
+#ifdef __MACH__
 	execvP(shellexec, searchpath, argv);
-	perror("asabin: execvp failed");
+#else
+	execv(absshellexec, argv);
+#endif
+	perror("asabin: exec failed");
 	return 1;
 }
