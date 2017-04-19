@@ -103,7 +103,7 @@ while [ "$1" != "" ]; do
 		read a b c d e < <(printf "%s" "$subnet")
 		if [ "$e" = "" ]; then e=21; fi
 		IFS="$OLD_IFS"
-		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 127 -o \
+		if [    "$a" -ne "$a" -o "$a" -lt 1 -o "$a" -gt 254 -o \
 			"$b" -ne 0 -o \
 			"$c" -ne "$c" -o "$c" -lt 0 -o "$c" -gt 254 -o \
 			"$d" != "1" -o \
@@ -163,7 +163,6 @@ if [ "$nc" == "1" ]; then
 fi
 
 IFCONFIGA="ifconfig -a"
-IFCONFIGA="cat x"
 
 lastifnumber=-1
 lastifnumberpat="#lastifnumber="
@@ -207,82 +206,93 @@ fi
 if [ "$UNAME" == "Darwin" ]; then
 
 	while read line; do
+		echo $ifaddr $ifname
 		declare "ifaddr_$ifaddr=$ifname"
 	done < <(
 	ifconfig "$ifname" | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
+	)
 
 fi
-echo "last IF: $ifname:$lastifnumber"
-echo "lo:23976 is: $ifaddr_23976"
-echo "99.99.3.3 is: $ifname_99_99_3_3"
+#echo "last IF: $ifname:$lastifnumber"
+#echo "lo:23976 is: $ifaddr_23976"
+#echo "99.99.3.3 is: $ifname_99_99_3_3"
 
-exit 0
+#declare "ens160_56_0_0_1=ens160:0"
 
+ifidx=0
 for c in $(seq $cstart $cend); do
 	for d in $(seq $dstart $dincr $dend); do
 		ifaddr=$a.$b.$c.$d
+		ifaddrref=$a_$b_$c_$d
 		if [ "$listonly" ]; then
+			printf "ens160:%s %s/21\n" "$ifidx" "$ifaddr"
+			ifidx=$[$ifidx + 1]
+		else
 			echo $ifaddr
+			ind="${ifname}_$ifaddrref" this_ifaddr="${!ind}"
+			echo $ind
+			echo $this_ifaddrref
+			exit 1
 		fi
-		elif [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
-			ifaddr2=$a-$b-$c-$d
-			ifaddrpat=$a\\.$b\\.$c\\.$d
-			thisifname=
-			if [ "$hostprefix" != "" ]; then
-				hostent="$(printf "%s\t%s%s-%s\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
-				hostentprintf="$(printf "%s\\\\t%s%s-%s\\\\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
-				hostpattern="$(printf "/^\\s*%s[[:space:]]+%s-%s\\s*$/" "$ifaddrpat" "$hostprefix" "$ifaddr2")"
-			fi
-			if [ "$removealias" -a "$dryrun" ]; then
-				echo $specificifname $ifname $ifaddr $existingifaddr
-				if [ "$specificifname" != "$ifname" -a "$ifaddr" == "$existingifaddr" ]; then
-					echo ifconfig "$specificifname" down
-				elif [ "$specificifname" == "$ifname" ]; then
-					echo ifconfig "$specificifname" -alias $ifaddr netmask "$netmask"
-				fi
-				if [ "$hostprefix" != "" ]; then
-					echo sed -Ei \"\" \'"$hostpattern"\'d \'"$HOSTSFILE"\'
-				fi
-			elif [ "$removealias" -a ! "$dryrun" ]; then
-				ifconfig "$specificifname" -alias $ifaddr netmask "$netmask" 2>/dev/null
-				if [ "$hostprefix" != "" ]; then
-					sed -Ei "" "$hostpattern"d "$HOSTSFILE" || exit
-				fi
-			fi
-			if [ ! "$removealias" ]; then
-				if [ "$NEXTIF" != "" ]; then
-					nextifname=$ifname:$NEXTIF
-					NEXTIF=$[$NEXTIF + 1]
-				else
-					nextifname="$ifname"
-				fi
-				if [ "$dryrun" ]; then
-					if [ "$ifname" != "$nextifname" ]; then
-						echo ifconfig "$nextifname" $ifaddr netmask "$netmask"
-					else
-						echo ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
-					fi
-					if [ "$hostprefix" != "" ]; then
-						echo printf \'"$hostentprintf"\' \>\> \'"$HOSTSFILE"\'
-					fi
-				else
-					ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
-					rc=$?
-					if [ $rc -gt 0 ]; then
-						echo Cannot alias $specificifname $ifaddr\; are you root\?
-						exit $rc
-					fi
-					if [ "$hostprefix" != "" ]; then
-						printf "%s" "$hostent" >> "$HOSTSFILE" || exit
-					fi
-				fi
-			fi
-			if [ "$progress" -a ! "$dryrun" ]; then
-				progressshown=1
-				echo -n -e "\r$[100 * $counter / $total]% ... "
-			fi
-			counter=$[$counter + 1]
-		fi
+#		elif [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
+#			ifaddr2=$a-$b-$c-$d
+#			ifaddrpat=$a\\.$b\\.$c\\.$d
+#			thisifname=
+#			if [ "$hostprefix" != "" ]; then
+#				hostent="$(printf "%s\t%s%s-%s\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
+#				hostentprintf="$(printf "%s\\\\t%s%s-%s\\\\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
+#				hostpattern="$(printf "/^\\s*%s[[:space:]]+%s-%s\\s*$/" "$ifaddrpat" "$hostprefix" "$ifaddr2")"
+#			fi
+#			if [ "$removealias" -a "$dryrun" ]; then
+#				echo $specificifname $ifname $ifaddr $existingifaddr
+#				if [ "$specificifname" != "$ifname" -a "$ifaddr" == "$existingifaddr" ]; then
+#					echo ifconfig "$specificifname" down
+#				elif [ "$specificifname" == "$ifname" ]; then
+#					echo ifconfig "$specificifname" -alias $ifaddr netmask "$netmask"
+#				fi
+#				if [ "$hostprefix" != "" ]; then
+#					echo sed -Ei \"\" \'"$hostpattern"\'d \'"$HOSTSFILE"\'
+#				fi
+#			elif [ "$removealias" -a ! "$dryrun" ]; then
+#				ifconfig "$specificifname" -alias $ifaddr netmask "$netmask" 2>/dev/null
+#				if [ "$hostprefix" != "" ]; then
+#					sed -Ei "" "$hostpattern"d "$HOSTSFILE" || exit
+#				fi
+#			fi
+#			if [ ! "$removealias" ]; then
+#				if [ "$NEXTIF" != "" ]; then
+#					nextifname=$ifname:$NEXTIF
+#					NEXTIF=$[$NEXTIF + 1]
+#				else
+#					nextifname="$ifname"
+#				fi
+#				if [ "$dryrun" ]; then
+#					if [ "$ifname" != "$nextifname" ]; then
+#						echo ifconfig "$nextifname" $ifaddr netmask "$netmask"
+#					else
+#						echo ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
+#					fi
+#					if [ "$hostprefix" != "" ]; then
+#						echo printf \'"$hostentprintf"\' \>\> \'"$HOSTSFILE"\'
+#					fi
+#				else
+#					ifconfig "$nextifname" alias $ifaddr netmask "$netmask"
+#					rc=$?
+#					if [ $rc -gt 0 ]; then
+#						echo Cannot alias $specificifname $ifaddr\; are you root\?
+#						exit $rc
+#					fi
+#					if [ "$hostprefix" != "" ]; then
+#						printf "%s" "$hostent" >> "$HOSTSFILE" || exit
+#					fi
+#				fi
+#			fi
+#			if [ "$progress" -a ! "$dryrun" ]; then
+#				progressshown=1
+#				echo -n -e "\r$[100 * $counter / $total]% ... "
+#			fi
+#			counter=$[$counter + 1]
+#		fi
 	done
 done
 
