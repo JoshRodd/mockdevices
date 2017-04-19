@@ -323,7 +323,7 @@ SENDS = [
     ),
     (
         'show_run',
-        ('show runnning-config\n',),
+        ('show running-config\n',),
         SHOW_RUN,
         None,
         None,
@@ -735,7 +735,7 @@ object-group service MPI_SERVICES_2
 
     (
         'show_run_unchanged',
-        ('show runnning-config\n',),
+        ('show running-config\n',),
         SHOW_RUN,
         None,
         None,
