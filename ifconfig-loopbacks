@@ -204,6 +204,14 @@ if [ "$UNAME" == "Linux" ]; then
 		-e "$(printf 's/^[\t ]*inet addr:\([0-9.]*\)[\t ][\t ]*Mask:'"$netmask"'.*$/\\1/p')"
 		)
 fi
+if [ "$UNAME" == "Darwin" ]; then
+
+	while read line; do
+		declare "ifaddr_$ifaddr=$ifname"
+	done < <(
+	ifconfig "$ifname" | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
+
+fi
 echo "last IF: $ifname:$lastifnumber"
 echo "lo:23976 is: $ifaddr_23976"
 echo "99.99.3.3 is: $ifname_99_99_3_3"
@@ -213,18 +221,13 @@ exit 0
 for c in $(seq $cstart $cend); do
 	for d in $(seq $dstart $dincr $dend); do
 		ifaddr=$a.$b.$c.$d
-		ifaddr2=$a-$b-$c-$d
-		ifaddrpat=$a\\.$b\\.$c\\.$d
-		read existingifaddr optionalifname
-		if [ "$optionalifname" == "" ]; then
-			specificifname="$ifname"
-		else
-			specificifname="$optionalifname"
-		fi
-		if [ "$listonly" == "1" ]; then
+		if [ "$listonly" ]; then
 			echo $ifaddr
 		fi
-		if [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
+		elif [ \( \( "$ifaddr" != "$existingifaddr" \) -o "$force" -o "$removealias" \) -a ! "$listonly" ]; then
+			ifaddr2=$a-$b-$c-$d
+			ifaddrpat=$a\\.$b\\.$c\\.$d
+			thisifname=
 			if [ "$hostprefix" != "" ]; then
 				hostent="$(printf "%s\t%s%s-%s\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
 				hostentprintf="$(printf "%s\\\\t%s%s-%s\\\\n" "$ifaddr" "$hostprefix" $[$counter + 1] "$ifaddr2")"
@@ -281,25 +284,7 @@ for c in $(seq $cstart $cend); do
 			counter=$[$counter + 1]
 		fi
 	done
-done < <(
-
-if [ "$UNAME" == "Darwin" ]; then
-
-	ifconfig "$ifname" | sed -n "$(printf 's/^[\t ]*inet \([0-9.]*\) netmask '"$hexnetmask"'.*$/\\1/p')" | sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
-
-elif [ "$UNAME" == "Linux" ]; then
-	$IFCONFIGA | sed -n \
-		-e 's/^\('"$ifname"':[0-9][0-9]*\)[^0-9].*$/\1/p' \
-		-e "$(printf 's/^[\t ]*inet addr:\([0-9.]*\)[\t ][\t ]*Mask:'"$netmask"'.*$/\\1/p')" |
-			while read line; do
-				if [[ $line == "$ifname":* ]]; then
-					read nextline
-					echo $nextline $line
-				fi
-			done |
-				sort -t. -g -k1,1 -k2,2 -k3,3 -k4,4
-
-fi )
+done
 
 if [ "$progress" -a "$progressshown" ]; then
 	echo -e "\r100% completed"
