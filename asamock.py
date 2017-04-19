@@ -109,18 +109,19 @@ def raw_inputch(input=sys.stdin):
     return ch
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
-try:
-    ssh_conn = os.environ[SSH_CONN_KEY]
-    ssh_conn_l = os.environ[SSH_CONN_KEY].split()
-    if len(ssh_conn_l) != 4:
-       raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
-    remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
-except KeyError:
-    if len(sys.argv) < 2:
-        local_ip_addr = '::1'
-    else:
-        local_ip_addr = sys.argv[1]
+if len(sys.argv) == 2:
+    local_ip_addr = sys.argv[1]
     remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
+else:
+    try:
+        ssh_conn = os.environ[SSH_CONN_KEY]
+        ssh_conn_l = os.environ[SSH_CONN_KEY].split()
+        if len(ssh_conn_l) != 4:
+           raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
+        remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
+    except KeyError:
+        local_ip_addr = '::1'
+        remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
 local_user = getpass.getuser()
 enable_password = 'asapass'
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
@@ -211,6 +212,23 @@ kwds = {
 }
 
 device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
+    
+transscriptf = open(local_hostname + '.transcript.log', "a+")
+
+def printt(s, end='\n', nostdout=False, transscriptf=transscriptf):
+    files = [transscriptf]
+    if not nostdout:
+        files.append(sys.stdout)
+    s = s.split('\n')
+    for ln in s[:-1]:
+        for f in files:
+            print((str(os.getpid()) + ' ' if f == transscriptf else '') + ln, file=f)
+            f.flush()
+    for f in files:
+        print((str(os.getpid()) + ' ' if f == transscriptf else '') + s[-1], file=f)
+        f.flush()
+    for f in files:
+        f.flush()
 
 motd = '''\
 
@@ -218,16 +236,14 @@ motd = '''\
 #                                                                            #
 # A typical banner or legal notice goes here.                                #
 #                                                                            #
-''' + '# {}'.format(local_hostname) + '''
+''' + '# {}'.format(local_hostname) + ' ' * (78 - len(local_hostname) - 3) + '''#
 #                                                                            #
 ##############################################################################
 Type help or '?' for a list of available commands.
 
 '''
 
-print(motd, end='')
-
-sys.stdout.flush()
+printt(motd, end='')
 
 in_enable = False
 
@@ -238,10 +254,12 @@ pager_size = 24
 outp = ''
 while not device.check_exit():
     ln = input(device.get_prompt());
+    printt(device.get_prompt() + ln, nostdout=True)
     if ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
         enablepasswordln = asa_getpass()
+        printt('Password: ' + '*' * len(enablepasswordln), nostdout=True)
         if '{}'.format(enable_password) != enablepasswordln:
-            print('Invalid password.')
+            printt('Invalid password.')
         else:
             device.send('enable')
             in_enable = True
@@ -350,22 +368,22 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
             break
         if response is not None:
             outp += response
-            flush()
     else:
         outp = device.return_invalid_input()
     if len(outp) > 0:
         if device.check_error() or (filt is None and pager_size == 0):
-            print(outp)
+            printt(outp)
         else:
             outlines = 0
             ch = ''
             for l in outp.split('\n'):
-                outlines += 1
                 if filt is not None:
                     if filt in l:
-                        print(l)
+                        outlines += 1
+                        printt(l)
                 else:
-                    print(l)
+                    outlines += 1
+                    printt(l)
                 if pager_size > 0 and outlines >= pager_size:
                     print(MORE_STRING, end='')
                     flush()
@@ -380,7 +398,7 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
                     break
         flush()
         outp = ''
-print('''\
+printt('''\
 
 Logoff
 
