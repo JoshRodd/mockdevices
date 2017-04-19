@@ -502,36 +502,32 @@ Error executing command
         self.update_config()
         self.update_dicts(self.config)
 
-    replacements = (
-        ('show', '^\s*sh(ow|o)?'),
-        ('running-config', 'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?'),
-        ('object-group', 'object-g(roup|rou|ro|r)?'),
-        ('configure terminal', '^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e)?'),
-        ('enable', '^\s*en(?=[^d])(able|abl|ab|a)?'),
-        ('access-list', 'access-l(ist|is|i)?'),
-        ('write memory', '^\s*wr(ite|it|i)?\s+m(emory|emor|emo|em|e)?'),
-    )
+    patterns = {
+        'show': '^\s*sh(ow|o)?',
+        'running-config': 'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?',
+        'object-group': 'object-g(roup|rou|ro|r)?',
+        'config terminal': '^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e',
+        'enable': 'en(able|abl|ab|a)?',
+        'access-list': 'access-l(ist|is|i)?'
+    }
 
-    commands = (
-        (r'show\s+access-list\s*(?P<access_list>\S+)?\s*$', show_access_list),
-        (r'show\s+ipv6\s+access-list.*$', show_ipv6_access_list),
-        (r'show\s+object-group\s*(id\s+(?P<group_id>\S+))?\s*$', show_object_group),
-        (r'show\s+running-config.*$', show_run),
+    commands = [
+        (r'^\s*sho?w? access-li?s?t?\S*( (?P<access_list>\S+))?', show_access_list),
+        (r'^\s*sho?w? ipv6? a', show_ipv6_access_list),
+        (r'^\s*sh(ow|o)? object-g(roup|rou|ro|r)?( id (?P<group_id>\S+))?\s*$', show_object_group),
+        (r'^\s*sh(ow|o)? run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?', show_run),
         (r'^\s*end', end),
-        (r'enable', enable),
-        (r'configure\s+terminal', config_t),
+        (r'^\s*ena?b?l?e?', enable),
+        (r'^\s*confi?g? te?r?m?i?n?a?l?', config_t),
         (r'^\s*(ex|exit|logout|q|quit)', exit),
         (r'^\s*no', no),
-        (r'^\s*access-list', access_list),
-        (r'^\s*object-group', object_group),
+        (r'^\s*access-l', access_list),
+        (r'^\s*object-', object_group),
         (r'\s*(port-|service-|icmp-|network-)', object_group_element),
         (r'write memory', write_memory),
-    )
+    ]
 
     def send(self, command):
-        for (replace, pattern) in self.replacements:
-            command = re.sub(pattern, replace, command)
-
         valid = False
         for k, c in self.commands:
             m = re.search(k, command)
