@@ -47,12 +47,12 @@ interface GigabitEthernet0/2
 !
 interface GigabitEthernet0/3
  description to ** Internal Users **
- shutdown
  nameif users
  no security-level
  ip address {{ users_address }}
 !
 interface Management0/0
+ shutdown
  description to ** MGMT **
  duplex full
  management-only
