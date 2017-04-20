@@ -7,11 +7,8 @@ from collections import defaultdict
 from interactive_asa import ASA
 from asa_config import asa_config
 import readline
-
 import contextlib
 import io
-import os
-import sys
 import warnings
 import termios
 import tty
@@ -124,6 +121,7 @@ else:
         remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
 local_user = getpass.getuser()
 enable_password = 'asapass'
+local_ip_addr_addr = local_ip_addr
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
 if isinstance(local_ip_addr, IPv6Address):
     if local_ip_addr == IPv6Address('::1'):
@@ -214,9 +212,10 @@ kwds = {
 device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
     
 transscriptf = open(local_hostname + '.transcript.log', "a+")
+transscriptf2 = open('all.transcript.log', "a+")
 
-def printt(s, end='\n', nostdout=False, transscriptf=transscriptf):
-    files = [transscriptf]
+def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
+    files = [transscriptf, transscriptf2]
     if not nostdout:
         files.append(sys.stdout)
     s = s.split('\n')
@@ -229,6 +228,29 @@ def printt(s, end='\n', nostdout=False, transscriptf=transscriptf):
         f.flush()
     for f in files:
         f.flush()
+import sys
+
+def syslog_msg(m, date="{:%b %d %Y %H:%M:%S}".format(datetime.now(timezone.utc)), logging_id=local_hostname, facility='local7', severity='notice', end='\n'):
+    if facility == 'local7':
+        facility = 23
+    if severity == 'notice':
+        severity = 5
+    pri = facility * 8 + severity
+    return '<{}>{} {} : {}{}'.format(pri, date, logging_id, m, end)
+
+def syslog_msg_cmd(cmd, user=local_user):
+    return "%ASA-5-111008: User '{}' executed the '{}' command.".format(user, cmd)
+
+def send_syslog_msg(m, dest=remote_ip_addr, src=local_ip_addr_addr, port=514):
+    m = m.encode('ascii')
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind((src, port))
+    except PermissionError:
+        sock.bind((src, 0))
+    sock.sendto(m, (dest, port))
+
+#send_syslog_msg(syslog_msg(syslog_msg_cmd('access-list josh extended permit ip any any')))
 
 motd = '''\
 
@@ -364,6 +386,8 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
         pass
     elif in_enable or ln in ('quit', 'logout', 'exit'):
         response = device.send(ln)
+        if re.match(r'^\s*(object|access)', ln):
+            send_syslog_msg(syslog_msg(syslog_msg_cmd(ln.strip().replace("'", "\\'"))))
         if response == 1:
             break
         if response is not None:
