@@ -48,7 +48,7 @@ class Device_Adder:
         d['log_associated_cma'] = BLANK_STR
         d['audit_log_source_id'] = BLANK_STR
         d['cp_type'] = devicetype
-        d['device_terminal-type'] = terminal_type
+        d['device_terminal_type'] = terminal_type
         d['device_username'] = login['username']
         d['device_password'] = login['password']
         d['device_enable_password'] = d['device_password'] if devicetype in HAS_ENABLE_PASSWORD else BLANK_STR
@@ -61,7 +61,7 @@ class Device_Adder:
         d['customer_id'] = '1'
         d['monitoring_mode'] = 'periodic'
         d['port'] = str(22 if terminal_type == 'ssh' else 23 if terminal_type == 'telnet' else None)
-        d['dynamic_topology_data_mode'] = str(1)
+        d['dynamic_topology_data_mode'] = str(0)
         d['is_asbr'] = 'f'
         d['has_topology'] = 't'
         d['to_be_deleted'] = 'f'
@@ -95,10 +95,10 @@ def process_cli_args(me, cli_args, conf):
     elif cli_args.debug:
         for k in log_levels:
             log_levels[k] = 'DEBUG'
-    if sys.stdout.isatty:
-        if not cli_args.debug:
-            print("You have not specified --debug. All output will be going to the logfile in `{}{}'.".format(conf.get('common', 'log_file_path'), log_file))
-    setup_loggers(log_levels, log_to_stdout=cli_args.debug, log_file=log_file, no_format=True if cli_args.debug else False)
+#    if sys.stdout.isatty and sys.stderr.isatty and sys.stdin.isatty:
+#        if not cli_args.debug:
+#            print("You have not specified --debug. All output will be going to the logfile in `{}{}'.".format(conf.get('common', 'log_file_path'), log_file))
+#    setup_loggers(log_levels, log_to_stdout=cli_args.debug, log_file=log_file, no_format=True if cli_args.debug else False)
 
 def get_cli_args():
     parser = argparse.ArgumentParser('add_devices')
