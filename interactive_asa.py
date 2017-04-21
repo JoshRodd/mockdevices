@@ -88,6 +88,7 @@ class ASA:
         self.object_groups = defaultdict(list)
         self.acls = defaultdict(list)
         self.object_group_types = dict()
+        self.acl_names = []
 
         obj = 0
         object_group_name = ''
@@ -119,6 +120,8 @@ class ASA:
                 acl = self.acl_re.search(line)
                 if acl:
                     name = acl.group('name')
+                    if name not in self.acl_names:
+                        self.acl_names.append(name)
                     self.acls[name].append({n: acl.group(n) for n in acl.groupdict()})
                     self.acls[name][-1]['line'] = self.acls[name][-1]['line'] + 1 if self.acls[name][-1]['line'] else 1
                     self.acls[name][-1]['acl'] = line.strip()
@@ -245,7 +248,8 @@ Error executing command
                       'access-list cached ACL log flows: total 0, denied 0 (deny-flow-max 4096)\n'
                       '            alert-interval 300')
 
-        for name, aces in self.acls.items():
+        for name in self.acl_names:
+            aces = self.acls[name]
             if access_list and name != access_list:
                 continue
             acl_output = []
