@@ -290,8 +290,8 @@ while not device.check_exit():
     if re.search(r" \| (i|include) ", ln) is not None:
         grps = re.match(r"^([^|]*) \| (?:i|include) (.*)$", ln)
         if grps:
-            ln = grps[1]
-            filt = grps[2]
+            ln = grps.group(1)
+            filt = grps.group(2)
     if in_enable and ln == 'terminal pager 0':
         pager_size = 0
     elif in_enable and ln == 'show cpu | i util':
