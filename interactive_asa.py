@@ -198,18 +198,19 @@ Error executing command
             self.in_exit = True
 
     def show_run(self, cmd):
-        show_run_acl = re.search('show running-config access-list( (?P<acl_section>\S+))?$', cmd)
+        show_run_acl = re.search('show running-config access-(?P<type>list|group)( (?P<acl_section>\S+))?$', cmd)
         show_running_config = re.search('show running-config$', cmd)
         show_run_object_group = re.search('show running-config object-group( id (?P<object_group_section>\S+))?$', cmd)
 
         if show_run_acl:
+            show_type = show_run_acl.groupdict()['type']
             if show_run_acl.groupdict()['acl_section']:
                 acl_section = show_run_acl.groupdict()['acl_section']
                 if acl_section not in self.acls:
                     return 'ERROR: access-list <{}> does not exist'.format(acl_section)
             else:
                 acl_section = ''
-            return '\n'.join([l for l in self.config_string.split('\n') if re.search('^access-list {}'.format(acl_section), l)])
+            return '\n'.join([l for l in self.config_string.split('\n') if re.search('^access-{}\s*{}'.format(show_type, acl_section), l)])
 
         elif show_run_object_group:
             object_group_id = show_run_object_group.groupdict()['object_group_section'] or None
@@ -512,6 +513,7 @@ Error executing command
         ('configure terminal', '^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e)?'),
         ('enable', '^\s*en(?=[^d])(able|abl|ab|a)?'),
         ('access-list', 'access-l(ist|is|i)?'),
+        ('access-group', 'access-g(roup|rou|ro|r)?'),
         ('write memory', '^\s*wr(ite|it|i)?\s+m(emory|emor|emo|em|e)?'),
     )
 
@@ -542,7 +544,7 @@ Error executing command
                 func = c
                 args = m.groupdict()
                 valid = True
-                return func(self, command, **args)
+                return func(self, command.strip(), **args)
         if not valid:
             return self.return_invalid_input()
 
