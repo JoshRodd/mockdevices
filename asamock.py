@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from collections import defaultdict
 from interactive_asa import ASA
 from asa_config import asa_config
+from os.path import expanduser
 import readline
 import contextlib
 import io
@@ -117,9 +118,15 @@ else:
            raise Exception('Environment variable {} is not in the expected `address port address port\' format: {}'.format(SSH_CONN_KEY, ssh_conn))
         remote_ip_addr, remote_port, local_ip_addr, local_port = ssh_conn_l
     except KeyError:
-        local_ip_addr = '::1'
+        local_ip_addr = '127.0.0.1'
         remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
 local_user = getpass.getuser()
+# If the username is root, check for a home directory that looks like /home or /Users.
+if local_user == 'root':
+    homedir = expanduser("~")
+    m = re.match("^.*/(?:Users|home)/.*(?<=/)([^/]+)/?", homedir)
+    if m:
+        local_user = m.group(1)
 enable_password = 'asapass'
 local_ip_addr_addr = local_ip_addr
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
@@ -168,7 +175,13 @@ peers['wan'] = ip_address(wan_interface.ip) + 1
 
 wan_classa = IPv4Interface(str(local_ip_addr) + '/8').network.network_address
 wan_classa_base = wan_classa + ((siteid - 1) * pow(2, 32 - prefixlen['wan']))
-assert wan_classa_base == wan_interface.network.network_address
+if wan_classa_base != wan_interface.network.network_address:
+    print('''The incoming IP address does not appear to be a valid management address.
+If you are using SSH to connect to the host that is running this program,
+you may need to pass in a command line parameter of `127.0.0.1' to avoid
+trying to use the host's default IP address as the mocked management address.
+''', file=sys.stderr, end='')
+    sys.exit(1)
 
 bases = {}
 bases['users'] = '10.100.0.0'
@@ -252,13 +265,18 @@ def send_syslog_msg(m, dest=remote_ip_addr, src=local_ip_addr_addr, port=514):
 
 #send_syslog_msg(syslog_msg(syslog_msg_cmd('access-list josh extended permit ip any any')))
 
+def fmt_banner(s, line_len=78, before='# ', after='#'):
+    return '{}{}{}{}'.format(before, s, ' ' * (line_len - len(before) - len(s) - len(after)), after)
+
 motd = '''\
 
 ##############################################################################
 #                                                                            #
 # A typical banner or legal notice goes here.                                #
 #                                                                            #
-''' + '# {}'.format(local_hostname) + ' ' * (78 - len(local_hostname) - 3) + '''#
+''' + fmt_banner(local_hostname) + '''
+#                                                                            #
+''' + fmt_banner('You are: {}@{}'.format(local_user, remote_ip_addr)) + '''
 #                                                                            #
 ##############################################################################
 Type help or '?' for a list of available commands.
@@ -277,6 +295,7 @@ outp = ''
 while not device.check_exit():
     ln = input(device.get_prompt());
     printt(device.get_prompt() + ln, nostdout=True)
+    ln = ln.rstrip()
     if ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
         enablepasswordln = asa_getpass()
         printt('Password: ' + '*' * len(enablepasswordln), nostdout=True)
@@ -287,14 +306,16 @@ while not device.check_exit():
             in_enable = True
         continue
     filt = None
-    if re.search(r" \| (i|include) ", ln) is not None:
+    if re.search(r" \| i(|nclude) ", ln) is not None:
         grps = re.match(r"^([^|]*) \| (?:i|include) (.*)$", ln)
         if grps:
-            ln = grps[1]
-            filt = grps[2]
-    if in_enable and ln == 'terminal pager 0':
-        pager_size = 0
-    elif in_enable and ln == 'show cpu | i util':
+            ln = grps.group(1)
+            filt = grps.group(2)
+    if in_enable and re.search(r'^\s+terminal pager (\d+)\s$', ln):
+        pager_size = re.match(r'^\s+terminal pager (\d+)\s$', ln).groups(1)
+        if pager_size < 0:
+            pager_size = 0
+    elif in_enable and re.match(r'sh(|ow) cpu\s+|\s+i(|nc(|l(|ude))) util(|ization)', ln):
         outp += 'CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%'
     elif in_enable and ln == 'show clock':
         locale.setlocale(locale.LC_TIME, "C")
@@ -322,7 +343,7 @@ Number of vCPUs              :     1
 Number of allowed vCPUs      :     0
 vCPU Status                  :  Noncompliant: Over-provisioned
 '''
-    elif ln in ('show ver', 'show version'):
+    elif ln in ('show ver', 'show version', 'sh ver', 'sh version'):
         outp += '''\
 
 Cisco Adaptive Security Appliance Software Version 9.5(2)204
@@ -384,9 +405,9 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
         pass
     elif in_enable and re.match('^\s*$', ln):
         pass
-    elif in_enable or ln in ('quit', 'logout', 'exit'):
+    elif in_enable or ln in ('quit', 'logout', 'exit', 'ex', 'log', 'qu'):
         response = device.send(ln)
-        if re.match(r'^\s*(object|access)', ln):
+        if re.match(r'^\s*(obj|acc|wr)', ln):
             send_syslog_msg(syslog_msg(syslog_msg_cmd(ln.strip().replace("'", "\\'"))))
         if response == 1:
             break
