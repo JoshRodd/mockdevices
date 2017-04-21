@@ -315,8 +315,6 @@ while not device.check_exit():
         pager_size = re.match(r'^\s+terminal pager (\d+)\s$', ln).groups(1)
         if pager_size < 0:
             pager_size = 0
-    elif in_enable and re.match(r'sh(|ow) cpu\s+|\s+i(|nc(|l(|ude))) util(|ization)', ln):
-        outp += 'CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 1%'
     elif in_enable and ln == 'show clock':
         locale.setlocale(locale.LC_TIME, "C")
         outp += "{:%H:%M:%S.0 %Z %a %b %d %Y}".format(datetime.now(timezone.utc))
@@ -333,9 +331,9 @@ Provisioned       2048 MB
 Allowed              0 MB
 Status            Noncompliant: Over-provisioned
 '''
-    elif in_enable and ln == 'show cpu':
+    elif in_enable and ln in ('show cpu', 'sh cpu'):
         outp += '''\
-CPU utilization for 5 seconds = 2%; 1 minute: 0%; 5 minutes: 0%
+CPU utilization for 5 seconds = 1%; 1 minute: 1%; 5 minutes: 0%
 
 Virtual platform CPU resources
 ------------------------------
