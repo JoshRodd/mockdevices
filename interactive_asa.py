@@ -40,9 +40,9 @@ class ASA:
     icmp_object_re = re.compile('^\s*icmp-object (?P<object>.*)')
     acl_re = re.compile('access-list '
                         '(?P<name>\S+)( line '
-                        '(?P<line>\d+))? '
-                        '(?P<type>extended|remark'
-                        '(?P<remark>.*))( '
+                        '(?P<line>\d+))?'
+                        '(?P<type> extended| remark'
+                        '(?P<remark>.*))?( '
                         '(?P<action>permit|deny) '
                         '(?P<protocol>\d{1,3}|object-group '
                         '(?P<svc_group>\S+)|[a-z]+) '
