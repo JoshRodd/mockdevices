@@ -83,7 +83,7 @@ object-group network ENCLAVE_ORDERING_SERVERS
 object-group network INTERNAL_MPE_SERVERS
  network-object {{ mpe_network }}
 object-group network INTERNAL_MPI_SERVERS
- ggnetwork-object {{ mpi_network }}
+ network-object {{ mpi_network }}
 object-group network MPE_SERVERS
  network-object 10.0.0.128 255.0.0.192
 object-group network MPI_SERVERS
@@ -292,6 +292,7 @@ def asa_config(hostname=None, wan_network=None, wan_address=None, mpi_address=No
     try:
         with open(conf_file) as cfg:
             filecontent = cfg.read()
+        assert filecontent == baseline_asa_conf_file_text
     except:
         filecontent = baseline_asa_conf_file_text
     return Environment(newline_sequence = '\n').from_string(filecontent).render( {
