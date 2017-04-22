@@ -13,6 +13,8 @@ import warnings
 import termios
 import tty
 
+os.environ['TERM'] = 'vt100'
+
 MORE_STRING = '<--- More --->'
 
 def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echochar='*'):
