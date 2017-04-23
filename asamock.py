@@ -14,11 +14,9 @@ import warnings
 import termios
 import tty
 
-os.environ['TERM'] = 'vt100'
-
 MORE_STRING = '<--- More --->'
 
-def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echochar='*'):
+def asa_getpass(prompt='Password: ', stream=sys.stdout, inpu=sys.stdin, echochar='*'):
     """Prompt for a password, with echo turned off, and echo asterisks.
     Args:
       prompt: Written on stream to ask for the input.  Default: 'Password: '
@@ -45,7 +43,7 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echocha
                     tcsetattr_flags |= termios.TCSASOFT
                 try:
                     termios.tcsetattr(fd, tcsetattr_flags, new)
-                    passwd = _raw_input(prompt, stream, input, echochar)
+                    passwd = _raw_input(prompt, stream, inpu, echochar)
                 finally:
                     termios.tcsetattr(fd, tcsetattr_flags, old)
                     stream.flush()  # issue7208
@@ -60,7 +58,7 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, input=sys.stdin, echocha
         stream.flush()
         return passwd
 
-def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin, echochar='*'):
+def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
     # This doesn't save the string in the GNU readline history.
     prompt = str(prompt)
     if prompt:
@@ -73,15 +71,15 @@ def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin, echochar='*'):
             stream.write(prompt)
         stream.flush()
     # NOTE: The Python C API calls flockfile() (and unlock) during readline.
-    #line = input.readline()
+    #line = inpu.readline()
     line = ''
     ch = ''
     while True:
-        #ch = raw_inputch(input)
-        fd = input.fileno()
+        #ch = raw_inputch(inpu)
+        fd = inpu.fileno()
         old_settings = termios.tcgetattr(fd)
         tty.setraw(fd)
-        ch = input.read(1)
+        ch = inpu.read(1)
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         chb = bytes(ch, 'ascii')
         if ch == '\b' or chb == b'\x7f':
@@ -98,8 +96,8 @@ def _raw_input(prompt="", stream=sys.stdout, input=sys.stdin, echochar='*'):
             stream.write('*')
             stream.flush()
 
-def raw_inputch(input=sys.stdin):
-    fd = input.fileno()
+def raw_inputch(inpu=sys.stdin):
+    fd = inpu.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
         tty.setraw(sys.stdin.fileno())
