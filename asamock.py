@@ -13,6 +13,7 @@ import io
 import warnings
 import termios
 import tty
+import prompt_toolkit
 
 MORE_STRING = '<--- More --->'
 
@@ -30,33 +31,33 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, inpu=sys.stdin, echochar
     Always restores terminal settings before returning.
     """
     passwd = None
-    with contextlib.ExitStack() as stack:
-        fd = stream.fileno()
+    fd = stream.fileno()
 
-        if fd is not None:
-            try:
+    if fd is not None:
+        try:
+            if inpu.isatty() and stream.isatty():
                 old = termios.tcgetattr(fd)     # a copy to save
                 new = old[:]
                 new[3] &= ~termios.ECHO  # 3 == 'lflags'
                 tcsetattr_flags = termios.TCSAFLUSH
                 if hasattr(termios, 'TCSASOFT'):
                     tcsetattr_flags |= termios.TCSASOFT
-                try:
+            try:
+                if inpu.isatty() and stream.isatty():
                     termios.tcsetattr(fd, tcsetattr_flags, new)
-                    passwd = _raw_input(prompt, stream, inpu, echochar)
-                finally:
+                passwd = _raw_input(prompt, stream, inpu, echochar)
+            finally:
+                if inpu.isatty() and stream.isatty():
                     termios.tcsetattr(fd, tcsetattr_flags, old)
-                    stream.flush()  # issue7208
-            except termios.error:
-                if passwd is not None:
-                    # _raw_input succeeded.  The final tcsetattr failed.  Reraise
-                    # instead of leaving the terminal in an unknown state.
-                    raise
-
-#        stream.write('*' * (len(passwd)))
-        stream.write('\n')
-        stream.flush()
-        return passwd
+                stream.flush()  # issue7208
+        except termios.error:
+            if passwd is not None:
+                # _raw_input succeeded.  The final tcsetattr failed.  Reraise
+                # instead of leaving the terminal in an unknown state.
+                raise
+    stream.write('\n')
+    stream.flush()
+    return passwd
 
 def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
     # This doesn't save the string in the GNU readline history.
@@ -77,10 +78,12 @@ def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
     while True:
         #ch = raw_inputch(inpu)
         fd = inpu.fileno()
-        old_settings = termios.tcgetattr(fd)
-        tty.setraw(fd)
+        if inpu.isatty() and stream.isatty():
+            old_settings = termios.tcgetattr(fd)
+            tty.setraw(fd)
         ch = inpu.read(1)
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        if inpu.isatty() and stream.isatty():
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         chb = bytes(ch, 'ascii')
         if ch == '\b' or chb == b'\x7f':
             if len(line) > 0:
@@ -98,12 +101,15 @@ def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
 
 def raw_inputch(inpu=sys.stdin):
     fd = inpu.fileno()
-    old_settings = termios.tcgetattr(fd)
+    if inpu.isatty():
+        old_settings = termios.tcgetattr(fd)
     try:
-        tty.setraw(sys.stdin.fileno())
+        if inpu.isatty():
+            tty.setraw(sys.stdin.fileno())
         ch = sys.stdin.read(1)
     finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        if inpu.isatty():
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
@@ -292,11 +298,28 @@ from getpass import getpass
 pager_size = 24
 
 outp = ''
+history = prompt_toolkit.history.InMemoryHistory()
+vi_mode = False
 while not device.check_exit():
-    ln = input(device.get_prompt());
+    if sys.stdout.isatty() and sys.stdin.isatty():
+        try:
+            ln = prompt_toolkit.shortcuts.prompt(device.get_prompt(), history=history, vi_mode=vi_mode);
+        except EOFError:
+            ln = 'logout'
+    else:
+        print(device.get_prompt(), end='')
+        flush()
+        ln = input()
     printt(device.get_prompt() + ln, nostdout=True)
     ln = ln.rstrip()
-    if ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
+    filt = None
+    if ln in ('set -o vi'):
+        vi_mode = True
+        continue
+    elif ln in ('set -o emacs'):
+        vi_mode = False
+        continue
+    elif ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
         enablepasswordln = asa_getpass()
         printt('Password: ' + '*' * len(enablepasswordln), nostdout=True)
         if '{}'.format(enable_password) != enablepasswordln:
