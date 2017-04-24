@@ -345,12 +345,13 @@ while not device.check_exit():
         if grps:
             ln = grps.group(1)
             filt = grps.group(2)
-    if re.search(r'^\s*terminal width (\d+)\s*$', ln):
-        width_size = re.match(r'^\s*terminal width (\d+)\s*$', ln).groups(1)
+    ln = ln.lstrip()
+    if re.search(r'^terminal width (\d+)$', ln):
+        width_size = re.match(r'^terminal width (\d+)$', ln).group(1)
         if width_size < 0:
             width_size = 0
-    elif re.search(r'^\s*terminal pager (\d+)\s*$', ln):
-        pager_size = re.match(r'^\s*terminal pager (\d+)\s*$', ln).groups(1)
+    elif re.search(r'^terminal pager (\d+)$', ln):
+        pager_size = re.match(r'^terminal pager (\d+)$', ln).group(1)
         if pager_size < 0:
             pager_size = 0
     elif in_enable and ln == 'show clock':
