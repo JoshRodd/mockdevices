@@ -59,7 +59,7 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, inpu=sys.stdin, echochar
     stream.flush()
     return passwd
 
-def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
+def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None):
     # This doesn't save the string in the GNU readline history.
     prompt = str(prompt)
     if prompt:
@@ -96,8 +96,13 @@ def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar='*'):
             continue
         else:
             line = line + ch
-            stream.write('*')
-            stream.flush()
+            if echochar is not None:
+                if len(echochar) > 0:
+                    stream.write(echochar)
+                    stream.flush()
+            else:
+                stream.write(ch)
+                stream.flush()
 
 def raw_inputch(inpu=sys.stdin):
     fd = inpu.fileno()
@@ -300,8 +305,9 @@ pager_size = 24
 outp = ''
 history = prompt_toolkit.history.InMemoryHistory()
 vi_mode = False
+prompt_mode = False
 while not device.check_exit():
-    if sys.stdout.isatty() and sys.stdin.isatty():
+    if sys.stdout.isatty() and sys.stdin.isatty() and prompt_mode:
         try:
             ln = prompt_toolkit.shortcuts.prompt(device.get_prompt(), history=history, vi_mode=vi_mode);
         except EOFError:
@@ -309,15 +315,19 @@ while not device.check_exit():
     else:
         print(device.get_prompt(), end='')
         flush()
-        ln = input()
+        ln = _raw_input()
+        print()
+        flush()
     printt(device.get_prompt() + ln, nostdout=True)
     ln = ln.rstrip()
     filt = None
     if ln in ('set -o vi'):
         vi_mode = True
+        prompt_mode = True
         continue
     elif ln in ('set -o emacs'):
         vi_mode = False
+        prompt_mode = True
         continue
     elif ln in ('en', 'ena', 'enab', 'enabl', 'enable'):
         enablepasswordln = asa_getpass()
