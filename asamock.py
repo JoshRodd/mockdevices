@@ -301,6 +301,7 @@ in_enable = False
 from getpass import getpass
 
 pager_size = 24
+width_size = 80
 
 outp = ''
 history = prompt_toolkit.history.InMemoryHistory()
@@ -344,8 +345,12 @@ while not device.check_exit():
         if grps:
             ln = grps.group(1)
             filt = grps.group(2)
-    if in_enable and re.search(r'^\s+terminal pager (\d+)\s$', ln):
-        pager_size = re.match(r'^\s+terminal pager (\d+)\s$', ln).groups(1)
+    if re.search(r'^\s+terminal width (\d+)\s*$', ln):
+        width_size = re.match(r'^\s+terminal width (\d+)\s*$', ln).groups(1)
+        if width_size < 0:
+            width_size = 0
+    elif re.search(r'^\s+terminal pager (\d+)\s*$', ln):
+        pager_size = re.match(r'^\s+terminal pager (\d+)\s*$', ln).groups(1)
         if pager_size < 0:
             pager_size = 0
     elif in_enable and ln == 'show clock':
