@@ -321,11 +321,11 @@ while not device.check_exit():
     printt(device.get_prompt() + ln, nostdout=True)
     ln = ln.rstrip()
     filt = None
-    if ln in ('set -o vi'):
+    if ln == 'set -o vi':
         vi_mode = True
         prompt_mode = True
         continue
-    elif ln in ('set -o emacs'):
+    elif ln == 'set -o emacs':
         vi_mode = False
         prompt_mode = True
         continue
