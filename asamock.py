@@ -306,7 +306,7 @@ width_size = 80
 outp = ''
 history = prompt_toolkit.history.InMemoryHistory()
 vi_mode = False
-prompt_mode = False
+prompt_mode = True
 while not device.check_exit():
     if sys.stdout.isatty() and sys.stdin.isatty() and prompt_mode:
         try:
@@ -347,11 +347,11 @@ while not device.check_exit():
             filt = grps.group(2)
     ln = ln.lstrip()
     if re.search(r'^terminal width (\d+)$', ln):
-        width_size = re.match(r'^terminal width (\d+)$', ln).group(1)
+        width_size = int(re.match(r'^terminal width (\d+)$', ln).group(1))
         if width_size < 0:
             width_size = 0
     elif re.search(r'^terminal pager (\d+)$', ln):
-        pager_size = re.match(r'^terminal pager (\d+)$', ln).group(1)
+        pager_size = int(re.match(r'^terminal pager (\d+)$', ln).group(1))
         if pager_size < 0:
             pager_size = 0
     elif in_enable and ln == 'show clock':
@@ -440,7 +440,7 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
 '''
     elif in_enable and ln == 'show ipv6 access-list':
         pass
-    elif in_enable and re.match('^\s*$', ln):
+    elif re.match('^\s*$', ln):
         pass
     elif in_enable or ln in ('quit', 'logout', 'exit', 'ex', 'log', 'qu'):
         response = device.send(ln)
