@@ -246,7 +246,7 @@ device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hos
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
 
-def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
+def printt(s, end='\n', last='\r', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
     files = [transscriptf, transscriptf2]
     if not nostdout:
         files.append(sys.stdout)
@@ -258,7 +258,7 @@ def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2
     for f in files:
         print((str(os.getpid()) + ' ' if f == transscriptf else '') + s[-1], file=f, end=end)
         f.flush()
-    print('', end='\r')
+    print('', end=last)
     for f in files:
         f.flush()
 import sys
@@ -327,7 +327,7 @@ while not device.check_exit():
         ln = _raw_input()
         print()
         flush()
-    printt(device.get_prompt() + ln, nostdout=True)
+    printt(device.get_prompt() + ln, nostdout=True, last='')
     ln = ln.rstrip()
     filt = None
     if ln == 'set -o vi':
