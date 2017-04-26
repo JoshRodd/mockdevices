@@ -217,7 +217,7 @@ Error executing command
             return self.show_object_group('show object-group', object_group_id)
 
         elif show_running_config:
-            return self.config_string
+            return self.config_string.rstrip()
         else:
             return self.return_invalid_input()
 
