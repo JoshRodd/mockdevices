@@ -59,7 +59,10 @@ def asa_getpass(prompt='Password: ', stream=sys.stdout, inpu=sys.stdin, echochar
     stream.flush()
     return passwd
 
+lastgetchar = ''
+
 def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None):
+    global lastgetchar
     # This doesn't save the string in the GNU readline history.
     prompt = str(prompt)
     if prompt:
@@ -81,7 +84,9 @@ def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None):
         if inpu.isatty() and stream.isatty():
             old_settings = termios.tcgetattr(fd)
             tty.setraw(fd)
+        lastlastgetchar = lastgetchar
         ch = inpu.read(1)
+        lastgetchar = ch
         if inpu.isatty() and stream.isatty():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         chb = bytes(ch, 'ascii')
@@ -90,8 +95,11 @@ def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None):
                 line = line[:-1]
                 stream.write('\b \b')
                 stream.flush()
-        elif ch in ('\n', '\r'):
+        elif ch == '\r':
             return line
+        elif ch == '\n':
+            if lastlastgetchar != '\r':
+                return line
         elif chb == b'\0':
             continue
         else:
@@ -470,8 +478,10 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
                     print(MORE_STRING, end='')
                     flush()
                     ch = ''
-                    while ch not in (' ', '\r', 'q'):
+                    lastch = ''
+                    while ch not in (' ', '\r', 'q') and (ch != '\n' or lastch == '\r'):
                         ch = raw_inputch()
+                        lastch = ch
                         if ch == ' ':
                             outlines = 0
                     print('\r' + ' ' * len(MORE_STRING) + '\r', end='')
@@ -485,4 +495,5 @@ printt('''\
 Logoff
 
 ''',end='')
+flush()
 sys.exit(0)
