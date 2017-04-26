@@ -245,11 +245,12 @@ def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2
     s = s.split('\n')
     for ln in s[:-1]:
         for f in files:
-            print((str(os.getpid()) + ' ' if f == transscriptf else '') + ln, file=f)
+            print((str(os.getpid()) + ' ' if f == transscriptf else '') + ln, file=f, end=end)
             f.flush()
     for f in files:
-        print((str(os.getpid()) + ' ' if f == transscriptf else '') + s[-1], file=f)
+        print((str(os.getpid()) + ' ' if f == transscriptf else '') + s[-1], file=f, end=end)
         f.flush()
+    print('', end='\r')
     for f in files:
         f.flush()
 import sys
@@ -290,11 +291,10 @@ motd = '''\
 ''' + fmt_banner('You are: {}@{}'.format(local_user, remote_ip_addr)) + '''
 #                                                                            #
 ##############################################################################
-Type help or '?' for a list of available commands.
 
-'''
+Type help or '?' for a list of available commands.'''
 
-printt(motd, end='')
+printt(motd,)
 
 in_enable = False
 
@@ -306,7 +306,7 @@ width_size = 80
 outp = ''
 history = prompt_toolkit.history.InMemoryHistory()
 vi_mode = False
-prompt_mode = True
+prompt_mode = False
 while not device.check_exit():
     if sys.stdout.isatty() and sys.stdin.isatty() and prompt_mode:
         try:
@@ -470,7 +470,7 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
                     print(MORE_STRING, end='')
                     flush()
                     ch = ''
-                    while ch not in (' ', '\n', '\r', 'q'):
+                    while ch not in (' ', '\r', 'q'):
                         ch = raw_inputch()
                         if ch == ' ':
                             outlines = 0
