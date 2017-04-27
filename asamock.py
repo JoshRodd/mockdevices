@@ -14,6 +14,7 @@ import warnings
 import termios
 import tty
 import prompt_toolkit
+import shutil
 
 MORE_STRING = '<--- More --->'
 
@@ -246,11 +247,19 @@ device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hos
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
 
-def printt(s, end='\n', last='\r', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
+def printt(s, end='\n', last='\r', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2, width=None):
     files = [transscriptf, transscriptf2]
     if not nostdout:
         files.append(sys.stdout)
     s = s.split('\n')
+    if width is not None and width != 0:
+        news = []
+        for ln in s:
+            while len(ln) > width:
+               news.append(ln[:width])
+               ln = ln[width:]
+            news.append(ln)
+        s = news
     for ln in s[:-1]:
         for f in files:
             print((str(os.getpid()) + ' ' if f == transscriptf else '') + ln, file=f, end=end)
@@ -309,7 +318,12 @@ in_enable = False
 from getpass import getpass
 
 pager_size = 24
-width_size = 80
+try:
+    width_size = shutil.get_terminal_size()[0]
+except:
+    width_size = 80
+if width_size < 1:
+    width_size = 80
 
 outp = ''
 history = prompt_toolkit.history.InMemoryHistory()
@@ -358,6 +372,10 @@ while not device.check_exit():
         width_size = int(re.match(r'^terminal width (\d+)$', ln).group(1))
         if width_size < 0:
             width_size = 0
+    elif ln == 'terminal width':
+        printt('Terminal width is {}'.format(width_size), width=width_size)
+    elif ln == 'terminal pager':
+        printt('Terminal pager is {}'.format(pager_size), width=width_size)
     elif re.search(r'^terminal pager (\d+)$', ln):
         pager_size = int(re.match(r'^terminal pager (\d+)$', ln).group(1))
         if pager_size < 0:
@@ -462,7 +480,7 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
         outp = device.return_invalid_input()
     if len(outp) > 0:
         if device.check_error() or (filt is None and pager_size == 0):
-            printt(outp)
+            printt(outp, width=width_size)
         else:
             outlines = 0
             ch = ''
@@ -470,10 +488,10 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
                 if filt is not None:
                     if filt in l:
                         outlines += 1
-                        printt(l)
+                        printt(l, width=width_size)
                 else:
                     outlines += 1
-                    printt(l)
+                    printt(l, width=width_size)
                 if pager_size > 0 and outlines >= pager_size:
                     print(MORE_STRING, end='')
                     flush()
