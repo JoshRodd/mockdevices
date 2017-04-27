@@ -243,7 +243,7 @@ kwds = {
 }
 
 device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
-    
+
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
 
