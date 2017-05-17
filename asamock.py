@@ -246,19 +246,19 @@ device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hos
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
 
-def printt(s, end='\n', last='\r', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
+def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2):
     files = [transscriptf, transscriptf2]
+    stamp = datetime.now().strftime("%H:%M:%S.%f") + ' ' + str(os.getpid())
     if not nostdout:
         files.append(sys.stdout)
     s = s.split('\n')
     for ln in s[:-1]:
         for f in files:
-            print((str(os.getpid()) + ' ' if f == transscriptf else '') + ln, file=f, end=end)
+            print((stamp + ' ' if f == transscriptf else '') + ln, file=f, end=end)
             f.flush()
     for f in files:
-        print((str(os.getpid()) + ' ' if f == transscriptf else '') + s[-1], file=f, end=end)
+        print((stamp + ' ' if f == transscriptf else '') + s[-1], file=f, end=end)
         f.flush()
-    print('', end=last)
     for f in files:
         f.flush()
 import sys
@@ -322,12 +322,12 @@ while not device.check_exit():
         except EOFError:
             ln = 'logout'
     else:
-        print(device.get_prompt(), end='')
+        print('\r' + device.get_prompt(), end='')
         flush()
         ln = _raw_input()
         print()
         flush()
-    printt(device.get_prompt() + ln, nostdout=True, last='')
+    printt('\r' + device.get_prompt() + ln, nostdout=True)
     ln = ln.rstrip()
     filt = None
     if ln == 'set -o vi':
@@ -488,6 +488,7 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
                     flush()
                 if ch == 'q':
                     break
+	
         flush()
         outp = ''
 printt('''\
