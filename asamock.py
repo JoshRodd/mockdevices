@@ -248,7 +248,7 @@ transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
 
 #def printt(s, end='\n', last='\r', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2, width=None):
-def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2, width=None):
+def printt(s, nostdout=False, transscriptf=transscriptf, transscriptf2=transscriptf2, width=None):
     files = [transscriptf, transscriptf2]
     stamp = datetime.now().strftime("%H:%M:%S.%f") + ' ' + str(os.getpid())
     if not nostdout:
@@ -262,15 +262,10 @@ def printt(s, end='\n', nostdout=False, transscriptf=transscriptf, transscriptf2
                ln = ln[width:]
             news.append(ln)
         s = news
-    for ln in s[:-1]:
+    for ln in s:
         for f in files:
-            print((stamp + ' ' if f == transscriptf else '') + ln, file=f, end=end)
+            print((stamp + ' ' if f in (transscriptf, transscriptf2) else '') + ln, file=f)
             f.flush()
-    for f in files:
-        print((stamp + ' ' if f == transscriptf else '') + s[-1], file=f, end=end)
-        f.flush()
-    for f in files:
-        f.flush()
 import sys
 
 def syslog_msg(m, date="{:%b %d %Y %H:%M:%S}".format(datetime.now(timezone.utc)), logging_id=local_hostname, facility='local7', severity='notice', end='\n'):
@@ -286,7 +281,10 @@ def syslog_msg_cmd(cmd, user=local_user):
 
 def send_syslog_msg(m, dest=remote_ip_addr, src=local_ip_addr_addr, port=514):
     m = m.encode('ascii')
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    if src == '::1' and dest == '::1':
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+    else:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind((src, port))
     except PermissionError:
@@ -331,18 +329,21 @@ history = prompt_toolkit.history.InMemoryHistory()
 vi_mode = False
 prompt_mode = False
 while not device.check_exit():
+    prmpt = device.get_prompt()
     if sys.stdout.isatty() and sys.stdin.isatty() and prompt_mode:
         try:
-            ln = prompt_toolkit.shortcuts.prompt(device.get_prompt(), history=history, vi_mode=vi_mode);
+            ln = prompt_toolkit.shortcuts.prompt(prmpt, history=history, vi_mode=vi_mode);
         except EOFError:
             ln = 'logout'
     else:
-        print('\r' + device.get_prompt(), end='')
+        print('\r' + prmpt, end='')
         flush()
+        printt('^M' + prmpt + ' ...', nostdout=True)
         ln = _raw_input()
         print()
         flush()
-    printt('\r' + device.get_prompt() + ln, nostdout=True)
+    printt('^M' + prmpt + ln, nostdout=True)
+    del prmpt
     ln = ln.rstrip()
     filt = None
     if ln == 'set -o vi':
@@ -513,7 +514,6 @@ Configuration last modified by enable_15 at 19:38:37.284 UTC Thu Mar 30 2017
 printt('''\
 
 Logoff
-
-''',end='')
+''')
 flush()
 sys.exit(0)
