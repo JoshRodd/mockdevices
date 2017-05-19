@@ -225,7 +225,7 @@ for c in $(seq $cstart $cend); do
 		ifaddr=$a.$b.$c.$d
 		ifaddrref=$a_$b_$c_$d
 		if [ "$listonly" ]; then
-			printf "ens160:%s %s/21\n" "$ifidx" "$ifaddr"
+			printf "eth0:%s %s/21\n" "$ifidx" "$ifaddr"
 			ifidx=$[$ifidx + 1]
 		else
 			echo $ifaddr
