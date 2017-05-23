@@ -19,110 +19,95 @@ import shutil
 MORE_STRING = '<--- More --->'
 
 def asa_getpass(prompt='Password: ', stream=sys.stdout, inpu=sys.stdin, echochar='*'):
-    """Prompt for a password, with echo turned off, and echo asterisks.
-    Args:
-      prompt: Written on stream to ask for the input.  Default: 'Password: '
-      stream: A writable file object to display the prompt.  Defaults to
-              the tty.  If no tty is available defaults to sys.stderr.
-    Returns:
-      The seKr3t input.
-    Raises:
-      EOFError: If our input tty or stdin was closed.
-      GetPassWarning: When we were unable to turn echo off on the input.
-    Always restores terminal settings before returning.
-    """
-    passwd = None
-    fd = stream.fileno()
-
-    if fd is not None:
-        try:
-            if inpu.isatty() and stream.isatty():
-                old = termios.tcgetattr(fd)     # a copy to save
-                new = old[:]
-                new[3] &= ~termios.ECHO  # 3 == 'lflags'
-                tcsetattr_flags = termios.TCSAFLUSH
-                if hasattr(termios, 'TCSASOFT'):
-                    tcsetattr_flags |= termios.TCSASOFT
-            try:
-                if inpu.isatty() and stream.isatty():
-                    termios.tcsetattr(fd, tcsetattr_flags, new)
-                passwd = _raw_input(prompt, stream, inpu, echochar)
-            finally:
-                if inpu.isatty() and stream.isatty():
-                    termios.tcsetattr(fd, tcsetattr_flags, old)
-                stream.flush()  # issue7208
-        except termios.error:
-            if passwd is not None:
-                # _raw_input succeeded.  The final tcsetattr failed.  Reraise
-                # instead of leaving the terminal in an unknown state.
-                raise
-    stream.write('\n')
-    stream.flush()
+    passwd = _raw_input(prompt, stream, inpu, echochar)
+    os.write(stream.fileno(), b'\n')
+    termios.tcflush(stream.fileno(), termios.TCOFLUSH)
     return passwd
 
 lastgetchar = ''
 
-def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None):
+def _raw_input(prompt="", stream=sys.stdout, inpu=sys.stdin, echochar=None, useprintt=True):
     global lastgetchar
     # This doesn't save the string in the GNU readline history.
     prompt = str(prompt)
-    if prompt:
-        try:
-            stream.write(prompt)
-        except UnicodeEncodeError:
-            # Use replace error handler to get as much as possible printed.
-            prompt = prompt.encode(stream.encoding, 'replace')
-            prompt = prompt.decode(stream.encoding)
-            stream.write(prompt)
-        stream.flush()
-    # NOTE: The Python C API calls flockfile() (and unlock) during readline.
-    #line = inpu.readline()
-    line = ''
-    ch = ''
-    while True:
-        #ch = raw_inputch(inpu)
-        fd = inpu.fileno()
+    old_restore = None
+    fd = inpu.fileno()
+    if inpu.isatty() and stream.isatty():
+        old_restore = termios.tcgetattr(fd)
+        old_settings = termios.tcgetattr(fd)
+    try:
         if inpu.isatty() and stream.isatty():
-            old_settings = termios.tcgetattr(fd)
             tty.setraw(fd)
-        lastlastgetchar = lastgetchar
-        ch = inpu.read(1)
-        lastgetchar = ch
-        if inpu.isatty() and stream.isatty():
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        chb = bytes(ch, 'ascii')
-        if ch == '\b' or chb == b'\x7f':
-            if len(line) > 0:
-                line = line[:-1]
-                stream.write('\b \b')
-                stream.flush()
-        elif ch == '\r':
-            return line
-        elif ch == '\n':
-            if lastlastgetchar != '\r':
+        if prompt:
+            try:
+                os.write(stream.fileno(), prompt.encode('ascii'))
+            except UnicodeEncodeError:
+                # Use replace error handler to get as much as possible printed.
+                prompt = prompt.encode(stream.encoding, 'replace')
+                prompt = prompt.decode(stream.encoding)
+                os.write(stream.fileno(), prompt.encode('ascii'))
+            termios.tcflush(stream.fileno(), termios.TCOFLUSH)
+            if useprintt is True:
+                printt('_raw_input() wrote: "{}"'.format(prompt), nostdout=True)
+        # NOTE: The Python C API calls flockfile() (and unlock) during readline.
+        #line = inpu.readline()
+        line = ''
+        ch = ''
+        while True:
+            #ch = raw_inputch(inpu)
+            fdstream = stream.fileno()
+            lastlastgetchar = lastgetchar
+            printt('_raw_input() inpu.read(1) ...', nostdout=True)
+            ch = os.read(fd, 1).decode('ascii')
+            printt('_raw_input() inpu.read(1) received: "{}"'.format(bytes(ch, 'ascii')), nostdout=True)
+            lastgetchar = ch
+            chb = bytes(ch, 'ascii')
+            if ch == '\b' or chb == b'\x7f':
+                if len(line) > 0:
+                    line = line[:-1]
+                    os.write(stream.fileno(), b'\b \b')
+                    termios.tcflush(stream.fileno(), termios.TCOFLUSH)
+            elif ch == '\r':
+                printt('_raw_input() received: "{}"'.format(line), nostdout=True)
+                if inpu.isatty() and stream.isatty():
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
                 return line
-        elif chb == b'\0':
-            continue
-        else:
-            line = line + ch
-            if echochar is not None:
-                if len(echochar) > 0:
-                    stream.write(echochar)
-                    stream.flush()
+            elif ch == '\n':
+                printt('_raw_input() received: "{}"'.format(line), nostdout=True)
+                if lastlastgetchar != '\r':
+                    if inpu.isatty() and stream.isatty():
+                        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    return line
+            elif chb == b'\0':
+                continue
             else:
-                stream.write(ch)
-                stream.flush()
+                line = line + ch
+                if echochar is not None:
+                    if len(echochar) > 0:
+                        os.write(stream.fileno(), echochar.encode('ascii'))
+                        termios.tcflush(stream.fileno(), termios.TCOFLUSH)
+                else:
+                    os.write(stream.fileno(), ch.encode('ascii'))
+                    termios.tcflush(stream.fileno(), termios.TCOFLUSH)
+    except:
+        if old_restore is not None:
+            termios.tcsetattr(fd, termios.TCSAFLUSH, old_restore)
+        raise
 
 def raw_inputch(inpu=sys.stdin):
     fd = inpu.fileno()
-    if inpu.isatty():
-        old_settings = termios.tcgetattr(fd)
+    old_settings = None
     try:
         if inpu.isatty():
-            tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
+            old_settings = termios.tcgetattr(fd)
+            tty.setraw(fd)
+        ch = os.read(fd, 1).decode('ascii')
+    except:
+        if old_settings is not None:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        raise
     finally:
-        if inpu.isatty():
+        if old_settings is not None:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
@@ -374,6 +359,8 @@ while not device.check_exit():
         width_size = int(re.match(r'^terminal width (\d+)$', ln).group(1))
         if width_size < 0:
             width_size = 0
+    elif ln == 'unix':
+        os.system("/bin/bash")
     elif ln == 'terminal width':
         printt('Terminal width is {}'.format(width_size), width=width_size)
     elif ln == 'terminal pager':
