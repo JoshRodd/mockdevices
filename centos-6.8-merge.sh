@@ -4,7 +4,7 @@
 
 TUFINOS=TufinOS-2.13
 CENTOS=CentOS-6.8
-CENTOS_RPM_URL="http://mirror.centos.org/centos/6.8/os/x86_64/Packages/centos-release-6-8.el6.centos.12.3.x86_64.rpm"
+CENTOS_RPM_URL="http://vault.centos.org/centos/6.8/os/x86_64/Packages/centos-release-6-8.el6.centos.12.3.x86_64.rpm"
 CENTOS_RPM_FILE="centos-release-6-8.el6.centos.12.3.x86_64.rpm"
 CENTOS_RPM=centos-release
 EPEL_RPM_URL="http://download.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm"
