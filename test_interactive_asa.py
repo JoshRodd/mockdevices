@@ -37,7 +37,7 @@ passwd 2KFQnbNIdI.2KYOU encrypted
 names
 !
 interface GigabitEthernet0/0
- description to ** MPLS Uplink 9.0.0.0 255.255.255.252 **
+ description to ** MPLS Uplink **
  duplex full
  nameif outside
  security-level 0
@@ -59,12 +59,12 @@ interface GigabitEthernet0/2
 !
 interface GigabitEthernet0/3
  description to ** Internal Users **
- shutdown
  nameif users
  no security-level
  ip address 10.100.0.1 255.255.255.0
 !
 interface Management0/0
+ shutdown
  description to ** MGMT **
  duplex full
  management-only
@@ -293,8 +293,7 @@ call-home
   destination address http https://tools.cisco.com/its/service/oddce/services/DDCEService
   destination transport-method http
 Cryptochecksum:89fc0e7a75db639607400231a59c9051
-: end
-'''
+: end'''
 
 
 def get_config_str():

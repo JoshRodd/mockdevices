@@ -150,6 +150,10 @@ else:
     local_hostname = socket.getfqdn(str(local_ip_addr))
     if local_hostname == str(local_ip_addr):
         raise Exception('Cannot resolve IP address `{}\' to a hostname.'.format(local_ip_addr))
+if '.' not in local_hostname:
+    local_hostname = '{}_{}'.format(local_hostname, local_port)
+else:
+    local_hostname = '{}_{}.{}'.format(local_hostname.split('.')[0], local_port, '.'.join(local_hostname.split('.')[1:]))
 
 def flush():
     try:
@@ -232,7 +236,8 @@ kwds = {
     'management_address': ifaces['management'],
 }
 
-device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
+# device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
+device = ASA(configstr=asa_config(**kwds), config='meraki_5.txt')
 
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")

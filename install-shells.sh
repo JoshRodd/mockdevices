@@ -66,7 +66,13 @@ if [ "$rc" -eq 0 -a "$OPERATION" == "uninstall" ]; then
 		echo The file \`"$SHELLSFILE"\' cannot be written. Are you root\? >&2
 		exit 1
 	fi
-	sed -i "" /"$pat"/d "$SHELLSFILE" || exit
+	NEWFILE=/tmp/shells.$$
+	if [ "$(uname)" == "Darwin" ]; then
+		sed -i "" /"$pat"/d "$SHELLSFILE" > "$NEWFILE" || exit
+	else
+		sed /"$pat"/d "$SHELLSFILE" > "$NEWFILE" || exit
+	fi
+	mv -f "$NEWFILE" "$SHELLSFILE"
 fi
 # Not already there. If installing, we need to append it to the end.
 if [ "$rc" -eq 1 -a "$OPERATION" == "install" ]; then

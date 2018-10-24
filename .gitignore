@@ -3,6 +3,8 @@ conf-*.txt
 
 # Local binaries
 asabin
+asabin2
+asabin214_0_0_1
 bin/
 
 # Byte-compiled / optimized / DLL files

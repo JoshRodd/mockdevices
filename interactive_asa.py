@@ -29,12 +29,13 @@
 import re
 from collections import defaultdict
 import binascii
+import time
 # from pprint import pprint
 
 
 class ASA:
     object_group_re = re.compile('^\s*object-group (?P<type>\S+) (?P<name>\S+)')
-    service_object_re = re.compile('^\s*service-object (?P<protocol>\S+) ?((?P<type>\S+) ?((?P<operator>\S+) (?P<svc>.+)$)?)?')
+    service_object_re = re.compile('^\s*service-object (?P<protocol>\S+) ?(((?P<type>(source|destination)) )?((?P<operator>\S+) (?P<svc>.+)$)?)?')
     port_object_re = re.compile('^\s*port-object (?P<object>.*)$')
     network_object_re = re.compile('^\s*network-object (?P<object>.*)')
     icmp_object_re = re.compile('^\s*icmp-object (?P<object>.*)')
@@ -54,8 +55,8 @@ class ASA:
                         '(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
                         '(?P<dst_group>\S+)|any\d?)( '
-                        '(?P<svc_type>(eq |gt |range |object-group )'
-                        '(?P<svc>.+)$))?)?\s*$')
+                        '(?P<svc_type>(eq |gt |range |object-group )?'
+                        '(?P<svc>.+)$))?)?(\s*log default\s*)?$')
 
     def __init__(self, config=None, configstr=None):
         assert config or configstr
@@ -106,10 +107,10 @@ class ASA:
                 service_object = self.service_object_re.search(line)
                 port_object = self.port_object_re.search(line)
                 icmp_object = self.icmp_object_re.search(line)
-                if network_object:
-                    self.object_groups[object_group_name].append({n: network_object.group(n) for n in network_object.groupdict()})
-                elif service_object:
+                if service_object:
                     self.object_groups[object_group_name].append({n: service_object.group(n) for n in service_object.groupdict()})
+                elif network_object:
+                    self.object_groups[object_group_name].append({n: network_object.group(n) for n in network_object.groupdict()})
                 elif port_object:
                     self.object_groups[object_group_name].append({n: port_object.group(n) for n in port_object.groupdict()})
                 elif icmp_object:
@@ -130,7 +131,7 @@ class ASA:
                     svc = acl.groupdict()['svc_type']
 
                     if svc and 'object-group' in svc:
-                        groups.add('svc')
+                        groups.append('svc')
 
                     for group in groups:
                         bound_obj = acl.groupdict()[group]
@@ -473,6 +474,10 @@ Error executing command
                 if obj not in self.object_groups:
                     self.in_error = True
                     return 'ERROR: specified object group <{}> not found'.format(obj)
+                if group == 'svc_group' and self.object_group_types[obj] != 'service':
+                    return 'ERROR: specified object group <{}> has wrong type; expecting service type'.format(obj)
+                if group in ('dst_group', 'src_group')  and self.object_group_types[obj] != 'network':
+                    return 'ERROR: specified object group <{}> has wrong type; expecting network type'.format(obj)
                 if not self.object_groups[obj]:
                     self.in_error = True
                     return 'ERROR: specified object group <{}> is empty'.format(obj)
@@ -507,6 +512,8 @@ Error executing command
         self.update_dicts(self.config)
 
     replacements = (
+        ('', '"'),
+        ('log default', 'log Default'),
         ('show', '^\s*sh(ow|o)?'),
         ('running-config', 'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?'),
         ('object-group', 'object-g(roup|rou|ro|r)?'),
