@@ -55,6 +55,7 @@ install:	bin/asabin bin/asabin2 bin/asabin214_0_0_1 asash asash2 asamock.py asam
 	install -m 755 bin/asabin "$(PREFIX)/bin"
 	install -m 755 bin/asabin2 "$(PREFIX)/bin"
 	install -m 755 bin/asabin214_0_0_1 "$(PREFIX)/bin"
+	install -m 755 bin/asabin214_0_0_1 "$(PREFIX)/bin/asabin214_0_0_1_23001"
 	install -m 755 asash "$(PREFIX)/bin"
 	install -m 755 asash2 "$(PREFIX)/bin"
 #	install -m 755 asamock.py "$(PREFIX)/bin"

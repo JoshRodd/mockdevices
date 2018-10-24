@@ -5,7 +5,9 @@
 
 const char *shellexec = "asash";
 const char *absshellexec = "/opt/local/bin/asash";
+#ifdef __MACH__
 const char *searchpath = "/usr/local/bin:/opt/local/bin:/opt/bin:/usr/bin:/bin:/usr/sbin:/sbin:.";
+#endif
 
 int main(int argc, char *argv[]) {
 #ifdef __MACH__

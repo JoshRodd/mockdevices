@@ -117,9 +117,11 @@ def raw_inputch(inpu=sys.stdin):
     return os.read(inpu.fileno(), 1).decode('ascii')
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
-if len(sys.argv) == 2:
+if len(sys.argv) == 2 or len(sys.argv) == 3:
     local_ip_addr = sys.argv[1]
     remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
+    if len(sys.argv) == 3:
+        remote_port, local_port = int(sys.argv[2]), int(sys.argv[2])
 else:
     try:
         ssh_conn = os.environ[SSH_CONN_KEY]
@@ -140,6 +142,8 @@ if local_user == 'root':
 enable_password = 'asapass'
 local_ip_addr_addr = local_ip_addr
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
+if local_port < 1 or local_port > 65535 or remote_port < 1 or remote_port > 65535:
+    raise Exception('Ports {} and/or {} are not valid.'.format(local_port, remote_port))
 if isinstance(local_ip_addr, IPv6Address):
     if local_ip_addr == IPv6Address('::1'):
         local_ip_addr = IPv4Address('127.0.0.1')
@@ -236,8 +240,8 @@ kwds = {
     'management_address': ifaces['management'],
 }
 
-# device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
-device = ASA(configstr=asa_config(**kwds), config='meraki_5.txt')
+device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
+#device = ASA(configstr=asa_config(**kwds), config='meraki_5.txt')
 
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")

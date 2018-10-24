@@ -117,9 +117,11 @@ def raw_inputch(inpu=sys.stdin):
     return os.read(inpu.fileno(), 1).decode('ascii')
 
 SSH_CONN_KEY = 'SSH_CONNECTION'
-if len(sys.argv) == 2:
+if len(sys.argv) == 2 or len(sys.argv) == 3:
     local_ip_addr = sys.argv[1]
     remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
+    if len(sys.argv) == 3:
+        remote_port, local_port = int(sys.argv[2]), int(sys.argv[2])
 else:
     try:
         ssh_conn = os.environ[SSH_CONN_KEY]
@@ -140,6 +142,8 @@ if local_user == 'root':
 enable_password = 'asapass'
 local_ip_addr_addr = local_ip_addr
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
+if local_port < 1 or local_port > 65535 or remote_port < 1 or remote_port > 65535:
+    raise Exception('Ports {} and/or {} are not valid.'.format(local_port, remote_port))
 if isinstance(local_ip_addr, IPv6Address):
     if local_ip_addr == IPv6Address('::1'):
         local_ip_addr = IPv4Address('127.0.0.1')
@@ -150,6 +154,10 @@ else:
     local_hostname = socket.getfqdn(str(local_ip_addr))
     if local_hostname == str(local_ip_addr):
         raise Exception('Cannot resolve IP address `{}\' to a hostname.'.format(local_ip_addr))
+if '.' not in local_hostname:
+    local_hostname = '{}_{}'.format(local_hostname, local_port)
+else:
+    local_hostname = '{}_{}.{}'.format(local_hostname.split('.')[0], local_port, '.'.join(local_hostname.split('.')[1:]))
 
 def flush():
     try:
@@ -183,16 +191,23 @@ wan_interface = IPv4Interface(str(local_ip_addr) + '/' + str(prefixlen['wan']))
 ifaces['wan'] = wan_interface.network.with_netmask.replace('/', ' ')
 peers['wan'] = ip_address(wan_interface.ip) + 1
 
-wan_classa = IPv4Interface(str(local_ip_addr) + '/8').network.network_address
-wan_classa_base = wan_classa + ((siteid - 1) * pow(2, 32 - prefixlen['wan']))
-if wan_classa_base != wan_interface.network.network_address:
-    print('''The incoming IP address does not appear to be a valid management address.
+# Don't bother with this if the port isn't 22 or 23.
+if local_port in [22, 23]:
+    wan_classa = IPv4Interface(str(local_ip_addr) + '/8').network.network_address
+    wan_classa_base = wan_classa + ((siteid - 1) * pow(2, 32 - prefixlen['wan']))
+    if wan_classa_base != wan_interface.network.network_address:
+        print('''The incoming IP address does not appear to be a valid management address.
 If you are using SSH to connect to the host that is running this program,
 you may need to pass in a command line parameter of `127.0.0.1' to avoid
 trying to use the host's default IP address as the mocked management address.
 ''', file=sys.stderr, end='')
-    sys.exit(1)
-
+        sys.exit(1)
+else:
+    siteid = local_port - 23001 + 1
+    wan_classa = IPv4Interface(str('215.0.0.0') + '/8').network.network_address
+    wan_classa_base = wan_classa + ((siteid - 1) * pow(2, 32 - prefixlen['wan']))
+    wan_interface.network.network_address = wan_classa_base   
+    
 bases = {}
 bases['users'] = '10.100.0.0'
 bases['management'] = '172.16.0.0'
@@ -233,6 +248,7 @@ kwds = {
 }
 
 device = ASA(configstr=asa_config(**kwds), config='conf-{}.txt'.format(local_hostname))
+#device = ASA(configstr=asa_config(**kwds), config='meraki_5.txt')
 
 transscriptf = open(local_hostname + '.transcript.log', "a+")
 transscriptf2 = open('all.transcript.log', "a+")
