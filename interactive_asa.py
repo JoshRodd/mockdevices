@@ -29,34 +29,42 @@
 import re
 from collections import defaultdict
 import binascii
-import time
+import sqlite3
+# import time
 # from pprint import pprint
+
+try:
+    DB_CONN = sqlite3.connect('file:asa.sqlite?mode=rw', uri=True)
+except sqlite3.OperationalError as e:
+    DB_CONN = None
+else:
+    DB_CUR = DB_CONN.cursor()
 
 
 class ASA:
-    object_group_re = re.compile('^\s*object-group (?P<type>\S+) (?P<name>\S+)')
-    service_object_re = re.compile('^\s*service-object (?P<protocol>\S+) ?(((?P<type>(source|destination)) )?((?P<operator>\S+) (?P<svc>.+)$)?)?')
-    port_object_re = re.compile('^\s*port-object (?P<object>.*)$')
-    network_object_re = re.compile('^\s*network-object (?P<object>.*)')
-    icmp_object_re = re.compile('^\s*icmp-object (?P<object>.*)')
-    acl_re = re.compile('access-list '
-                        '(?P<name>\S+)( line '
-                        '(?P<line>\d+))?'
-                        '(?P<type> extended| remark'
-                        '(?P<remark>.*))?( '
-                        '(?P<action>permit|deny) '
-                        '(?P<protocol>\d{1,3}|object-group '
-                        '(?P<svc_group>\S+)|[a-z]+) '
-                        '(?P<src>'
-                        '(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
-                        '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<src_group>\S+)|any\d?) '
-                        '(?P<dst>'
-                        '(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
-                        '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<dst_group>\S+)|any\d?)( '
-                        '(?P<svc_type>(eq |gt |range |object-group )?'
-                        '(?P<svc>.+)$))?)?(\s*log default\s*)?$')
+    object_group_re = re.compile(r'^\s*object-group (?P<type>\S+) (?P<name>\S+)')
+    service_object_re = re.compile(r'^\s*service-object (?P<protocol>\S+) ?(((?P<type>(source|destination)) )?((?P<operator>\S+) (?P<svc>.+)$)?)?')
+    port_object_re = re.compile(r'^\s*port-object (?P<object>.*)$')
+    network_object_re = re.compile(r'^\s*network-object (?P<object>.*)')
+    icmp_object_re = re.compile(r'^\s*icmp-object (?P<object>.*)')
+    acl_re = re.compile(r'access-list '
+                        r'(?P<name>\S+)( line '
+                        r'(?P<line>\d+))?'
+                        r'(?P<type> extended| remark'
+                        r'(?P<remark>.*))?( '
+                        r'(?P<action>permit|deny) '
+                        r'(?P<protocol>\d{1,3}|object-group '
+                        r'(?P<svc_group>\S+)|[a-z]+) '
+                        r'(?P<src>'
+                        r'(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                        r'(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
+                        r'(?P<src_group>\S+)|any\d?) '
+                        r'(?P<dst>'
+                        r'(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
+                        r'(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
+                        r'(?P<dst_group>\S+)|any\d?)( '
+                        r'(?P<svc_type>(eq |gt |range |object-group )?'
+                        r'(?P<svc>.+)$))?)?(\s*log default\s*)?$')
 
     def __init__(self, config=None, configstr=None):
         assert config or configstr
@@ -145,20 +153,20 @@ class ASA:
         if self.config_file is not None:
             with open(self.config_file, 'w') as cfg:
                 cfg.write(''.join(self.config_string))
-                return '''\
+                return """\
 Building configuration...
 Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
 
 12647 bytes copied in 0.390 secs
-[OK]'''
+[OK]"""
         else:
-            return '''\
+            return """\
 Building configuration...
 Cryptochecksum: e141b46b e03631fe 797913f9 bdabdff5
 
 %Error copying system:/running-config (No Device)
 Error executing command
-[FAILED]'''
+[FAILED]"""
 
     def get_prompt(self):
         return '{}{}{}'.format(self.hostname, '({})'.format(self.prompt_level[-1]) if self.prompt_level else '', self.prompt_end)
@@ -166,7 +174,7 @@ Error executing command
     def return_invalid_input(self):
         self.in_error = True
         return (
-            '{m:>{w}}\n'.format(m='^', w=len([i for i in self.get_prompt()])+1) +
+            '{m:>{w}}\n'.format(m='^', w=len([i for i in self.get_prompt()]) + 1) +
             "ERROR: % Invalid input detected at \'^\' marker.\n"
         )
 
@@ -199,9 +207,9 @@ Error executing command
             self.in_exit = True
 
     def show_run(self, cmd):
-        show_run_acl = re.search('show running-config access-(?P<type>list|group)( (?P<acl_section>\S+))?$', cmd)
-        show_running_config = re.search('show running-config$', cmd)
-        show_run_object_group = re.search('show running-config object-group( id (?P<object_group_section>\S+))?$', cmd)
+        show_run_acl = re.search(r'show running-config access-(?P<type>list|group)( (?P<acl_section>\S+))?$', cmd)
+        show_running_config = re.search(r'show running-config$', cmd)
+        show_run_object_group = re.search(r'show running-config object-group( id (?P<object_group_section>\S+))?$', cmd)
 
         if show_run_acl:
             show_type = show_run_acl.groupdict()['type']
@@ -211,7 +219,7 @@ Error executing command
                     return 'ERROR: access-list <{}> does not exist'.format(acl_section)
             else:
                 acl_section = ''
-            return '\n'.join([l for l in self.config_string.split('\n') if re.search('^access-{}\s*{}'.format(show_type, acl_section), l)])
+            return '\n'.join([l for l in self.config_string.split('\n') if re.search(r'^access-{}\s*{}'.format(show_type, acl_section), l)])
 
         elif show_run_object_group:
             object_group_id = show_run_object_group.groupdict()['object_group_section'] or None
@@ -226,9 +234,9 @@ Error executing command
         section = False
         output = ''
         for line in self.config:
-            if section and re.search('^\s+\S', line):
+            if section and re.search(r'^\s+\S', line):
                 output += line + '\n'
-            elif re.search('^object-group ', line) and (re.search('{}'.format(group_id), line) if group_id else True):
+            elif re.search(r'^object-group ', line) and (re.search(r'{}'.format(group_id), line) if group_id else True):
                 output += line + '\n'
                 section = True
             elif section:
@@ -267,8 +275,10 @@ Error executing command
                     line += 1
                     continue
                 else:
-                    acl_output.append('{} (hitcnt=0) {}'.format(re.sub(r'access-list (\S+)', r'access-list \1 line {}'.format(line),
-                                                                       top_ace.rstrip()), asa_hash(top_ace)))
+                    ace_hash = asa_hash("{action}{protocol}{src}{dst}{svc_type}".format(**ace))
+                    hitcnt = self.get_hitcnt(ace_hash) or 0
+                    acl_output.append('{} (hitcnt={}) {}'.format(re.sub(r'access-list (\S+)', r'access-list \1 line {}'.format(line),
+                                                                 top_ace.rstrip()), hitcnt, ace_hash))
 
                 if 'object-group' not in ace['acl']:
                     elem += 1
@@ -307,15 +317,19 @@ Error executing command
                     for source in sources:
                         for destination in destinations:
                             elem += 1
-                            acl_output.append('  access-list {name} line {line} extended {action} {protocol} {source} {destination}{service}'
-                                              .format(name=name, line=line, action=ace['action'], protocol=service[0], source=source,
-                                                      destination=destination, service=service[1]))
-                            acl_output[-1] = '{} (hitcnt=0) {}'.format(acl_output[-1], asa_hash(acl_output[-1]))
+                            ace_hash = asa_hash("{action}{protocol}{src}{dst}{svc_type}".format(action=ace['action'],
+                                                                                                protocol=service[0],
+                                                                                                src=source, dst=destination,
+                                                                                                svc_type=service[1]))
+                            hitcnt = self.get_hitcnt(ace_hash) or 0
+                            acl_output.append('  access-list {name} line {line} extended {action} {protocol} {source} {destination}{service} (hitcnt={hitcnt}) {ace_hash}'.
+                                              format(name=name, line=line, action=ace['action'], protocol=service[0], source=source,
+                                                     destination=destination, service=service[1], hitcnt=hitcnt, ace_hash=ace_hash))
 
                 line += 1
 
             acl_output.insert(0, 'access-list {}; {} elements; name hash: '.format(name, elem))
-            acl_output[0] = '{}{}'.format(acl_output[0], asa_hash(acl_output[-1]))
+            acl_output[0] = '{}{}'.format(acl_output[0], asa_hash(name))
             output.extend(acl_output)
         return '\n'.join(output)
 
@@ -328,13 +342,13 @@ Error executing command
         new_config = self.config[:]
         self.prompt_level = ['config']
         self.current_object_group = False
-        command = re.sub('line \d+ ', '', command.rstrip())
+        command = re.sub(r'line \d+ ', '', command.rstrip())
         section = False
 
         obj_match = self.object_group_re.search(command.replace('no ', ''))
-        obj_id_match = re.search('no object-group id (\S+)', command)
+        obj_id_match = re.search(r'no object-group id (\S+)', command)
         acl_match = self.acl_re.search(command.replace('no', ''))
-        acl_line_match = re.search('no access-list (?P<name>\S+) line (?P<number>\d+)', command)
+        acl_line_match = re.search(r'no access-list (?P<name>\S+) line (?P<number>\d+)', command)
 
         if obj_match:
             if obj_match.group('name') in self.bound_object_groups:
@@ -362,7 +376,7 @@ Error executing command
                 new_config.pop(remove)
                 section = True
                 continue
-            elif section and re.search('^\s+\S', line):
+            elif section and re.search(r'^\s+\S', line):
                 new_config.pop(remove)
                 continue
 
@@ -409,9 +423,9 @@ Error executing command
                 new_config = self.config[:]
                 obj = False
                 for n, l in enumerate(self.config):
-                    if re.search('^object-group', l):
+                    if re.search(r'^object-group', l):
                         obj = True
-                    if obj and not re.search('^(object-group| )', l):
+                    if obj and not re.search(r'^(object-group| )', l):
                         new_config.insert(n, line)
                         self.current_line = n + 1
                         break
@@ -476,30 +490,30 @@ Error executing command
                     return 'ERROR: specified object group <{}> not found'.format(obj)
                 if group == 'svc_group' and self.object_group_types[obj] != 'service':
                     return 'ERROR: specified object group <{}> has wrong type; expecting service type'.format(obj)
-                if group in ('dst_group', 'src_group')  and self.object_group_types[obj] != 'network':
+                if group in ('dst_group', 'src_group') and self.object_group_types[obj] != 'network':
                     return 'ERROR: specified object group <{}> has wrong type; expecting network type'.format(obj)
                 if not self.object_groups[obj]:
                     self.in_error = True
                     return 'ERROR: specified object group <{}> is empty'.format(obj)
 
-        if re.sub(' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
+        if re.sub(r' line \d+', '', line) not in (i['acl'] for i in self.acls[a.group('name')] if a.group('name') in self.acls):
             line_num = 1
             for n, l in enumerate(self.config):
-                if re.search('^access-list', l):
+                if re.search(r'^access-list', l):
                     asection = True
                 if asection and a.group('name') in l:
                     section = True
                 if a.groupdict()['line']:
                     if line_num == int(a.group('line')) and section:
-                        new_config.insert(n, re.sub(' line \d+', '', line))
+                        new_config.insert(n, re.sub(r' line \d+', '', line))
                         break
                     if section:
                         line_num += 1
                 if section and a.group('name') not in l:
-                    new_config.insert(n, re.sub(' line \d+', '', line))
+                    new_config.insert(n, re.sub(r' line \d+', '', line))
                     break
-                if asection and not re.search('^access-list', l):
-                    new_config.insert(n, re.sub(' line \d+', '', line))
+                if asection and not re.search(r'^access-list', l):
+                    new_config.insert(n, re.sub(r' line \d+', '', line))
                     break
         else:
             return 'WARNING: <{}> found duplicate element'.format(a.group('name'))
@@ -512,16 +526,16 @@ Error executing command
         self.update_dicts(self.config)
 
     replacements = (
-        ('', '"'),
-        ('log default', 'log Default'),
-        ('show', '^\s*sh(ow|o)?'),
-        ('running-config', 'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?'),
-        ('object-group', 'object-g(roup|rou|ro|r)?'),
-        ('configure terminal', '^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e)?'),
-        ('enable', '^\s*en(?=[^d])(able|abl|ab|a)?'),
-        ('access-list', 'access-l(ist|is|i)?'),
-        ('access-group', 'access-g(roup|rou|ro|r)?'),
-        ('write memory', '^\s*wr(ite|it|i)?\s+m(emory|emor|emo|em|e)?'),
+        ('', r'"'),
+        ('log default', r'log Default'),
+        ('show', r'^\s*sh(ow|o)?'),
+        ('running-config', r'run(ning-config|ning-confi|ning-conf|ning-con|ning-co|ning-c|ning-|ning|nin|ni|n)?'),
+        ('object-group', r'object-g(roup|rou|ro|r)?'),
+        ('configure terminal', r'^\s*conf(ig|i)? t(erminal|ermina|ermin|ermi|erm|er|e)?'),
+        ('enable', r'^\s*en(?=[^d])(able|abl|ab|a)?'),
+        ('access-list', r'access-l(ist|is|i)?'),
+        ('access-group', r'access-g(roup|rou|ro|r)?'),
+        ('write memory', r'^\s*wr(ite|it|i)?\s+m(emory|emor|emo|em|e)?'),
     )
 
     commands = (
@@ -563,6 +577,13 @@ Error executing command
 
     def check_exit(self):
         return self.in_exit
+
+    def get_hitcnt(self, ace_hash):
+        if not DB_CONN:
+            return None
+        else:
+            hits = DB_CUR.execute("SELECT cnt FROM hits WHERE serial=? AND hash=?", (self.hostname, ace_hash,)).fetchone()
+            return hits[0] if hits else None
 
 
 def asa_hash(ace):
