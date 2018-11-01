@@ -34,11 +34,16 @@ dist:	bin/asabin bin/asash_prefixed.sh asamock.py get_sshd_port.py interactive_a
 	install -m 755 bin/asabin dist/
 	install -m 755 bin/asash_prefixed.sh dist/asash
 	install -m 755 bin/check_install_prefixed.sh dist/mockdevices_check_install.sh
-	install -m 755 asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh mockdevices_requirements.txt mockdevices_required_rpms.txt dist/
+	install -m 755 asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh dist/
+	install -m 644 mockdevices_requirements.txt mockdevices_required_rpms.txt dist/
+	mkdir -p distd/"$(PREFIX)/bin"
+	cp -av dist/* distd/"$(PREFIX)/bin"
+	tar -C distd -c . | bzip2 -9 > mockdevices_dist.tar.bz2
+	rm -rf distd/
 
 install:	dist
 	mkdir -p "$(PREFIX)/bin"
-	install -m 755 dist/* "$(PREFIX)/bin"
+	install dist/* "$(PREFIX)/bin"
 	rm "$(PREFIX)/bin/asamock.py"
 	rm "$(PREFIX)/bin/asa_config.py"
 	rm "$(PREFIX)/bin/interactive_asa.py"
@@ -49,4 +54,4 @@ install:	dist
 	ln -sf `pwd`/get_sshd_port.py "$(PREFIX)/bin"
 
 clean:
-	rm -rf *.dSYM bin/ dist/ asabin
+	rm -rf *.dSYM bin/ dist/ asabin distd/
