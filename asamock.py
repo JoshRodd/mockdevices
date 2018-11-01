@@ -119,7 +119,7 @@ def raw_inputch(inpu=sys.stdin):
 SSH_CONN_KEY = 'SSH_CONNECTION'
 if len(sys.argv) == 2 or len(sys.argv) == 3:
     local_ip_addr = sys.argv[1]
-    remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, 22, local_ip_addr, 22
+    remote_ip_addr, remote_port, local_ip_addr, local_port = local_ip_addr, None, local_ip_addr, None
     if len(sys.argv) == 3:
         remote_port, local_port = int(sys.argv[2]), int(sys.argv[2])
 else:
@@ -142,6 +142,11 @@ if local_user == 'root':
 enable_password = 'asapass'
 local_ip_addr_addr = local_ip_addr
 local_ip_addr = ipaddress.ip_address(local_ip_addr)
+if local_port is None:
+    local_port = get_sshd_port.get_sshd_port()
+    remote_port = local_port
+local_port = int(local_port)
+remote_port = int(remote_port)
 if local_port < 1 or local_port > 65535 or remote_port < 1 or remote_port > 65535:
     raise Exception('Ports {} and/or {} are not valid.'.format(local_port, remote_port))
 if isinstance(local_ip_addr, IPv6Address):
