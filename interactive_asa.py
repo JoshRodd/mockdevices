@@ -50,11 +50,11 @@ class ASA:
                         '(?P<src>'
                         '(?P<src_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<src_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<src_group>\S+)|any\d?) '
+                        '(?P<src_group>\S+)|[Aa]ny\d?) '
                         '(?P<dst>'
                         '(?P<dst_network>([0-9]{1,3}\.){3}[0-9]{1,3} ([0-9]{1,3}\.){3}[0-9]{1,3})|host '
                         '(?P<dst_host>([0-9]{1,3}\.){3}[0-9]{1,3})|object-group '
-                        '(?P<dst_group>\S+)|any\d?)( '
+                        '(?P<dst_group>\S+)|[Aa]ny\d?)( '
                         '(?P<svc_type>(eq |gt |range |object-group )?'
                         '(?P<svc>.+)$))?)?(\s*log default\s*)?$')
 
