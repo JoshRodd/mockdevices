@@ -26,12 +26,34 @@ fi
 
 is_ok=1
 # Check RPMs
-count=$(comm -13 <(rpm -qa --qf="%{NAME}\n" | sort) <(cat "$BASE_DIR"/mockdevices_required_rpms.txt | sort) | wc -l)
+what_release=0
+cat /etc/redhat-release | grep -q 'release 7\.'
+if [ $? -eq 0 ]; then what_release='RHEL_7'; required_rpms='mockdevices_required_rpms_rhel7.txt'; fi
+cat /etc/redhat-release | grep -q 'release 6\.'
+if [ $? -eq 0 ]; then what_release='RHEL_6'; required_rpms='mockdevices_required_rpms.txt'; fi
+if [ "$what_release" == "0" ]; then
+	printf "I can't recognise this system as either a RHEL or CentOS 6 or 7 system.\n"
+	printf "Check the /etc/redhat-release file.\n"
+	printf "You may manually check the package listing for comparable packages\n"
+	printf "in $BASE_DIR/$required_rpms\n"
+	printf "if you are running another Linux distribution such as Debian.\n"
+else
+count=$(comm -13 <(rpm -qa --qf="%{NAME}\n" | sort) <(cat "$BASE_DIR"/"$required_rpms" | sort) | wc -l)
 if [ $count -gt 0 ]; then
 	is_ok=0
-	printf "%d packages are missing, as listed in $BASE_DIR""mockdevices_required_rpms.txt\n" "$count"
+	printf "%d packages are missing, as listed in $BASE_DIR""$required_rpms\n" "$count"
 	printf "Install them with this command:\n"
-	printf '\n\tyum install `cat %s/mockdevices_required_rpms.txt`\n' "$BASE_DIR"
+	printf '\n\tyum install `cat %s%s`\n' "$BASE_DIR" "$required_rpms"
+	exit 1
+fi
+fi
+
+python3 -m pip --version
+if [ $? -ne 0 ]; then
+	printf "The Python 3 PIP doesn't seem to be installed.\n"
+	printf "Repair it with this command:\n"
+	printf '\n\tpython3 -m ensurepip'
+	exit 1
 fi
 
 # Check PIP packages
