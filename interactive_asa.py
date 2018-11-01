@@ -30,6 +30,7 @@ import re
 from collections import defaultdict
 import binascii
 import sqlite3
+import os
 # import time
 # from pprint import pprint
 
@@ -84,12 +85,11 @@ class ASA:
 
         self.update_dicts(self.config)
 
-        try:
-            db_conn = sqlite3.connect('file:{}?mode=rw'.format(hits_db), uri=True)
-        except sqlite3.OperationalError as e:
-            self.db_cur = None
-        else:
+        if os.path.isfile(hits_db):
+            db_conn = sqlite3.connect(hits_db)
             self.db_cur = db_conn.cursor()
+        else:
+            self.db_cur = None
 
     def update_dicts(self, lines):
         self.bound_object_groups = set()
