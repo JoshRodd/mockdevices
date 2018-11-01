@@ -29,13 +29,13 @@ bin/asabin:	bin/asabin_prefixed.c Makefile
 	$(CC) $(CFLAGSO) bin/asabin_prefixed.c -o bin/asabin
 	strip bin/asabin
 
-dist:	bin/asabin bin/asash_prefixed.sh asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh bin/check_install_prefixed.sh mockdevices_requirements.txt mockdevices_required_rpms.txt
+dist:	bin/asabin bin/asash_prefixed.sh asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh bin/check_install_prefixed.sh mockdevices_requirements.txt mockdevices_required_rpms.txt mockdevices_required_rpms_rhel7.txt
 	mkdir -p dist/
 	install -m 755 bin/asabin dist/
 	install -m 755 bin/asash_prefixed.sh dist/asash
 	install -m 755 bin/check_install_prefixed.sh dist/mockdevices_check_install.sh
 	install -m 755 asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh dist/
-	install -m 644 mockdevices_requirements.txt mockdevices_required_rpms.txt dist/
+	install -m 644 mockdevices_requirements.txt mockdevices_required_rpms.txt mockdevices_required_rpms_rhel7.txt dist/
 	mkdir -p distd/"$(PREFIX)/bin"
 	cp -av dist/* distd/"$(PREFIX)/bin"
 	tar -C distd -c . | bzip2 -9 > mockdevices_dist.tar.bz2

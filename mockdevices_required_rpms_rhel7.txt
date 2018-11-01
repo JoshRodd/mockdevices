@@ -64,7 +64,7 @@ libxcb-devel
 llvm
 llvm-libs
 m4
-man
+man-db
 man-pages
 mpfr
 ncurses-devel

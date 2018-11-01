@@ -48,11 +48,34 @@ if [ $count -gt 0 ]; then
 fi
 fi
 
-python3 -m pip --version
+which python3 2>/dev/null >/dev/null
+python3_exe=$?
+which python3.6 2>/dev/null >/dev/null
+python36_exe=$?
+
+if [ "$python3_exe" -eq 0 ]; then
+
+VERSION_MAJOR="$(python3 --version | awk '{print $2}' | sed s'/^\([0-9][0-9]*\)\.[0-9][0-9]*.*$/\1/')"
+VERSION_MINOR="$(python3 --version | awk '{print $2}' | sed s'/^[0-9][0-9]*\.\([0-9][0-9]*\).*$/\1/')"
+if [ "$VERSION_MAJOR" -ne 3 -o "$VERSION_MINOR" -lt 6 ]; then
+	printf "Python 3.6 or later is required.\n"
+	printf "Make sure older Python versions are uninstalled.\n\n"
+fi
+
+fi
+
+if [ "$python36_exe" -eq 0 -a "$python3_exe" -ne 0 ]; then
+	printf "/bin/python3 needs to be a link to /bin/python3.6\n"
+	printf "Run this command:\n"
+	printf "\n\tln -sf python3.6 /bin/python3\n"
+	exit 1
+fi
+
+python3 -m pip --version >/dev/null
 if [ $? -ne 0 ]; then
 	printf "The Python 3 PIP doesn't seem to be installed.\n"
 	printf "Repair it with this command:\n"
-	printf '\n\tpython3 -m ensurepip'
+	printf '\n\tpython3 -m ensurepip\n'
 	exit 1
 fi
 
@@ -62,7 +85,7 @@ if [ $count -gt 0 ]; then
 	is_ok=0
 	printf "%d PIP packages need to be installed, as listed in $BASE_DIR""mockdevices_requirements.txt\n" "$count"
 	printf "Install them with this command:\n"
-	printf '\n\tpip3 install -r %s/mockdevice_requirements.txt\n' "$BASE_DIR"
+	printf '\n\tpip3 install -r %s/mockdevices_requirements.txt\n' "$BASE_DIR"
 fi
 
 "$BASE_DIR"/install-shells.sh --check "$PREFIX"/bin/asabin
@@ -100,19 +123,23 @@ else
 	fi
 fi
 
-#"$BASE_DIR"deploy-xinetd-ssh.sh -n "$NUM_PORTS"
-true
+"$BASE_DIR"deploy-xinetd-ssh.sh -n "$NUM_PORTS"
 if [ $? -ne 0 ]; then
+	printf "xinetd hasn't been deployed yet properly.\n"
+	printf "Run this command:\n"
+	printf "\n\tdeploy-xinetd-ssh.sh $NUM_PORTS\n\n"
 	is_ok=0
-fi
+else
 
 count=$(netstat -an|grep 22[0-9][0-9][0-9]|wc -l)
 if [ $count -ne "$NUM_PORTS" ]; then
 	is_ok=0
-	printf "Expected to see %d listeners on ports 22001-22999, but saw %d.\n" "$count"
-	printf "Check the output of netstat -an | grep 22[0-9][0-9][0-9]"
-	printf "Try running this command:\n"
+	printf "Expected to see %d listeners on ports 22001-22999, but saw %d.\n" "$NUM_PORTS" "$count"
+	printf "Check the output of netstat -an | grep 22[0-9][0-9][0-9]\n"
+	printf "And then try running this command:\n"
 	printf "\n\tservice xinetd restart\n"
+fi
+
 fi
 
 if [ $is_ok -eq 1 ]; then
