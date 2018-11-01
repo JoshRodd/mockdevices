@@ -5,44 +5,48 @@ CFLAGSO=-O4 -Oz -Ofast -DNDEBUG
 CFLAGS=-g -O0 -DDEBUG
 PREFIX=/usr/local
 
-all:	asabin asash_prefixed asamock.py
+all:	bin/asabin bin/asash_prefixed.sh bin/check_install_prefixed.sh
 
-asabin_prefixed.c:	asabin.c
-	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' asabin.c > asabin_prefixed.c
+debug:	asabin bin/asash_prefixed.sh bin/check_install_prefixed.sh
 
-check_install_prefixed.sh:	check_install.sh
-	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' check_install.sh > check_install_prefixed.sh
+bin/asabin_prefixed.c:	asabin.c
+	mkdir -p bin/
+	sed '/ prefix match$$/'"s;/usr/local;$(PREFIX);g" asabin.c > bin/asabin_prefixed.c
 
-asash_prefixed.sh:	asash.sh
-	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' asash.sh > asash_prefixed.sh
+bin/check_install_prefixed.sh:	check_install.sh
+	mkdir -p bin/
+	sed '/ prefix match$$/'"s;/usr/local;$(PREFIX);g" check_install.sh > bin/check_install_prefixed.sh
 
-asabin:	asabin_prefixed.c Makefile
-	$(CC) $(CFLAGS) asabin_prefixed.c -o asabin
+bin/asash_prefixed.sh:	asash.sh
+	mkdir -p bin/
+	sed '/ prefix match$$/'"s;/usr/local;$(PREFIX);g" asash.sh > bin/asash_prefixed.sh
 
-bin/asabin:	asabin_prefixed.c Makefile
-	mkdir -p bin
-	$(CC) $(CFLAGSO) asabin_prefixed.c -o bin/asabin
+asabin:	bin/asabin_prefixed.c Makefile
+	$(CC) $(CFLAGS) bin/asabin_prefixed.c -o asabin
+
+bin/asabin:	bin/asabin_prefixed.c Makefile
+	mkdir -p bin/
+	$(CC) $(CFLAGSO) bin/asabin_prefixed.c -o bin/asabin
 	strip bin/asabin
 
-uninstall:
-	rm -f "$(PREFIX)/bin/asabin"
-	rm -f "$(PREFIX)/bin/asash"
-	rm -f "$(PREFIX)/bin/asamock.py"
-
-dist:	bin/asabin asash_prefixed.sh asamock.py check_install_prefixed.sh
+dist:	bin/asabin bin/asash_prefixed.sh asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh bin/check_install_prefixed.sh mockdevices_requirements.txt mockdevices_required_rpms.txt
 	mkdir -p dist/
 	install -m 755 bin/asabin dist/
-	install -m 755 asash_prefixed.sh dist/asash
-	install -m 755 check_install_prefixed.sh dist/mockdevices_check_install.sh
-	install -m 755 asamock.py dist/asamock.py
+	install -m 755 bin/asash_prefixed.sh dist/asash
+	install -m 755 bin/check_install_prefixed.sh dist/mockdevices_check_install.sh
+	install -m 755 asamock.py get_sshd_port.py interactive_asa.py asa_config.py install-shells.sh deploy-xinetd-ssh.sh mockdevices_requirements.txt mockdevices_required_rpms.txt dist/
 
-install:	bin/asabin asash_prefixed.sh asamock.py check_install_prefixed.sh
+install:	dist
 	mkdir -p "$(PREFIX)/bin"
-	install -m 755 bin/asabin "$(PREFIX)/bin"
-	install -m 755 asash_prefixed.sh "$(PREFIX)/bin/asash"
-	ln -sf /usr/local/src/mockdevices/asamock.py "$(PREFIX)/bin/asamock.py"
-	ln -sf /usr/local/src/mockdevices/asamock.py "$(ALT_PREFIX)/bin/asamock.py"
+	install -m 755 dist/* "$(PREFIX)/bin"
+	rm "$(PREFIX)/bin/asamock.py"
+	rm "$(PREFIX)/bin/asa_config.py"
+	rm "$(PREFIX)/bin/interactive_asa.py"
+	rm "$(PREFIX)/bin/get_sshd_port.py"
+	ln -sf `pwd`/asamock.py "$(PREFIX)/bin"
+	ln -sf `pwd`/asa_config.py "$(PREFIX)/bin"
+	ln -sf `pwd`/interactive_asa.py "$(PREFIX)/bin"
+	ln -sf `pwd`/get_sshd_port.py "$(PREFIX)/bin"
 
 clean:
-	rm -f asabin asabin_prefixed.o asabin_prefixed.c check_install_prefixed.sh
-	rm -rf asabin.dSYM bin
+	rm -rf *.dSYM bin/ dist/ asabin

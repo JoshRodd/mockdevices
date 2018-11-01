@@ -26,21 +26,21 @@ fi
 
 is_ok=1
 # Check RPMs
-count=$(comm -13 <(rpm -qa --qf="%{NAME}\n" | sort) <(cat required_rpms.txt | sort) | wc -l)
+count=$(comm -13 <(rpm -qa --qf="%{NAME}\n" | sort) <(cat "$BASE_DIR"/mockdevices_required_rpms.txt | sort) | wc -l)
 if [ $count -gt 0 ]; then
 	is_ok=0
-	printf "%d packages are missing, as listed in required_rpms.txt\n" "$count"
+	printf "%d packages are missing, as listed in $BASE_DIR""mockdevices_required_rpms.txt\n" "$count"
 	printf "Install them with this command:\n"
-	printf '\n\tyum install `cat %s/required_rpms.txt`\n' "$(pwd)"
+	printf '\n\tyum install `cat %s/mockdevices_required_rpms.txt`\n' "$BASE_DIR"
 fi
 
 # Check PIP packages
-count=$((pip3 freeze -r requirements.txt 3>&2 2>&1 1>&3) 2>/dev/null | grep 'not installed$' | wc -l)
+count=$((pip3 freeze -r "$BASE_DIR"mockdevices_requirements.txt 3>&2 2>&1 1>&3) 2>/dev/null | grep 'not installed$' | wc -l)
 if [ $count -gt 0 ]; then
 	is_ok=0
-	printf "%d PIP packages need to be installed, as listed in requirements.txt\n" "$count"
+	printf "%d PIP packages need to be installed, as listed in $BASE_DIR""mockdevices_requirements.txt\n" "$count"
 	printf "Install them with this command:\n"
-	printf '\n\tpip3 install -r %s/requirements.txt\n' "$(pwd)"
+	printf '\n\tpip3 install -r %s/mockdevice_requirements.txt\n' "$BASE_DIR"
 fi
 
 "$BASE_DIR"/install-shells.sh --check "$PREFIX"/bin/asabin
