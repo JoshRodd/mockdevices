@@ -33,13 +33,6 @@ import sqlite3
 # import time
 # from pprint import pprint
 
-try:
-    DB_CONN = sqlite3.connect('file:asa.sqlite?mode=rw', uri=True)
-except sqlite3.OperationalError as e:
-    DB_CONN = None
-else:
-    DB_CUR = DB_CONN.cursor()
-
 
 class ASA:
     object_group_re = re.compile(r'^\s*object-group (?P<type>\S+) (?P<name>\S+)')
@@ -66,7 +59,7 @@ class ASA:
                         r'(?P<svc_type>(eq |gt |range |object-group )?'
                         r'(?P<svc>.+)$))?)?(\s*log default\s*)?$')
 
-    def __init__(self, config=None, configstr=None):
+    def __init__(self, config=None, configstr=None, hits_db='asa.sqlite'):
         assert config or configstr
         self.config_file = config
         if configstr is None:
@@ -90,6 +83,13 @@ class ASA:
         self.in_exit = False
 
         self.update_dicts(self.config)
+
+        try:
+            db_conn = sqlite3.connect('file:{}?mode=rw'.format(hits_db), uri=True)
+        except sqlite3.OperationalError as e:
+            self.db_cur = None
+        else:
+            self.db_cur = db_conn.cursor()
 
     def update_dicts(self, lines):
         self.bound_object_groups = set()
@@ -579,10 +579,11 @@ Error executing command
         return self.in_exit
 
     def get_hitcnt(self, ace_hash):
-        if not DB_CONN:
+        if not self.db_cur:
             return None
         else:
-            hits = DB_CUR.execute("SELECT cnt FROM hits WHERE serial=? AND hash=?", (self.hostname, ace_hash,)).fetchone()
+            print(self.hostname, ace_hash)
+            hits = self.db_cur.execute("SELECT cnt FROM hits WHERE serial=? AND hash=?", (self.hostname, ace_hash,)).fetchone()
             return hits[0] if hits else None
 
 
