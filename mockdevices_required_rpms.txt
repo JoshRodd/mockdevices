@@ -26,6 +26,7 @@ git
 glib2-devel
 glibc-devel
 glibc-headers
+glibc-static
 gtk2
 gtk2-devel
 hicolor-icon-theme
