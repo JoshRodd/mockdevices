@@ -24,6 +24,9 @@ while [ "$1" != "" ]; do
 			exit 1
 		fi
 		exit 0
+	elif [ "$1" == "--check" ]; then
+		shift
+		OPERATION=check
 	elif [ "$1" == "-f" -a "$2" != "" ]; then
 		shift
 		SHELLSFILE="$1"
@@ -81,4 +84,10 @@ if [ "$rc" -eq 1 -a "$OPERATION" == "install" ]; then
 		exit 1
 	fi
 	printf "%s\n" "$NEWSHELL" >> "$SHELLSFILE"
+fi
+if [ "$rc" -eq 0 -a "$OPERATION" == "check" ]; then
+	exit 0
+fi
+if [ "$rc" -eq 1 -a "$OPERATION" == "check" ]; then
+	exit 1
 fi

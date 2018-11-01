@@ -4,53 +4,45 @@ CC=clang
 CFLAGSO=-O4 -Oz -Ofast -DNDEBUG
 CFLAGS=-g -O0 -DDEBUG
 PREFIX=/usr/local
-ALT_PREFIX=/opt/local
 
-all:	asabin asash asamock.py
+all:	asabin asash_prefixed asamock.py
 
-asabin:	asabin.c Makefile
-	$(CC) $(CFLAGS) asabin.c -o asabin
+asabin_prefixed.c:	asabin.c
+	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' asabin.c > asabin_prefixed.c
 
-bin/asabin:	asabin.c Makefile
+check_install_prefixed.sh:	check_install.sh
+	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' check_install.sh > check_install_prefixed.sh
+
+asash_prefixed.sh:	asash.sh
+	sed '/ prefix match$/' s';/usr/local;'"$(PREFIX)"';g' asash.sh > asash_prefixed.sh
+
+asabin:	asabin_prefixed.c Makefile
+	$(CC) $(CFLAGS) asabin_prefixed.c -o asabin
+
+bin/asabin:	asabin_prefixed.c Makefile
 	mkdir -p bin
-	$(CC) $(CFLAGSO) asabin.c -o bin/asabin
+	$(CC) $(CFLAGSO) asabin_prefixed.c -o bin/asabin
 	strip bin/asabin
 
 uninstall:
 	rm -f "$(PREFIX)/bin/asabin"
 	rm -f "$(PREFIX)/bin/asash"
 	rm -f "$(PREFIX)/bin/asamock.py"
-	rm -f "$(ALT_PREFIX)/bin/asabin"
-	rm -f "$(ALT_PREFIX)/bin/asash"
-	rm -f "$(ALT_PREFIX)/bin/asamock.py"
-	./install-shells.sh --uninstall "$(PREFIX)/bin/asabin"
 
-install:	bin/asabin asash asamock.py
+dist:	bin/asabin asash_prefixed.sh asamock.py check_install_prefixed.sh
+	mkdir -p dist/
+	install -m 755 bin/asabin dist/
+	install -m 755 asash_prefixed.sh dist/asash
+	install -m 755 check_install_prefixed.sh dist/mockdevices_check_install.sh
+	install -m 755 asamock.py dist/asamock.py
+
+install:	bin/asabin asash_prefixed.sh asamock.py check_install_prefixed.sh
 	mkdir -p "$(PREFIX)/bin"
 	install -m 755 bin/asabin "$(PREFIX)/bin"
-	install -m 755 asash "$(PREFIX)/bin"
+	install -m 755 asash_prefixed.sh "$(PREFIX)/bin/asash"
 	ln -sf /usr/local/src/mockdevices/asamock.py "$(PREFIX)/bin/asamock.py"
-	install -m 755 ifconfig-loopbacks "$(PREFIX)/bin"
-	mkdir -p "$(ALT_PREFIX)"/bin
-	ln -sf ../../../usr/local/bin/asabin "$(ALT_PREFIX)/bin/asabin"
 	ln -sf /usr/local/src/mockdevices/asamock.py "$(ALT_PREFIX)/bin/asamock.py"
-	ln -sf ../../../usr/local/bin/asash "$(ALT_PREFIX)/bin/asash"
-	./install-shells.sh "$(PREFIX)/bin/asabin"
-
-commit:	test install clean Makefile
-	git commit --all
-	git push
 
 clean:
-	rm -f asabin asabin.o
+	rm -f asabin asabin_prefixed.o asabin_prefixed.c check_install_prefixed.sh
 	rm -rf asabin.dSYM bin
-
-# Tests don't work unless it's fully installed.
-test:	./asabin-test.sh ./ifconfig-loopbacks-test.sh ifconfig-loopbacks asabin bin/asabin Makefile ./asamock.py install
-	true
-#	echo enable | ./asabin-test.sh asabin
-#	echo enable | ./asabin-test.sh bin/asabin
-#	./test_ifconfig-loopbacks.sh ifconfig-loopbacks
-#	./asamock.py
-
-$(DEBUG).SILENT:	test

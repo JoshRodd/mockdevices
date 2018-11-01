@@ -3,6 +3,8 @@
 BASE_DIR="$(dirname "$(perl -MCwd -e 'print Cwd::abs_path shift' "$0")")"/
 NUM_PORTS=999
 
+PREFIX=/usr/local # prefix match
+
 if [ "$1" == "--version" ]; then
 	printf "mockdevices check_install.sh v1.0\n"
 	exit 0
@@ -41,12 +43,20 @@ if [ $count -gt 0 ]; then
 	printf '\n\tpip3 install -r %s/requirements.txt\n' "$(pwd)"
 fi
 
+"$BASE_DIR"/install-shells.sh --check "$PREFIX"/bin/asabin
+if [ $? -ne 0 ]; then
+	is_ok=0
+	printf "/etc/shells doesn't contain %s/bin/asabin\n" "$PREFIX"
+	printf "Add it with this command:\n"
+	printf "\n\t%sinstall-shells.sh %s/bin/asabin\n" "$BASE_DIR" "$PREFIX"
+fi
+
 grep -q '^asa:' /etc/passwd
 if [ $? -ne 0 ]; then
 	is_ok=0
 	printf "The asa user doesn't seem to exist.\n"
 	printf "Add it with this command:\n"
-	printf '\n\tuseradd -d /home/asa asa -s /usr/local/bin/asabin\n'
+	printf '\n\tuseradd -d /home/asa asa -s %s/bin/asabin\n' "$PREFIX"
 elif [ ! -d ~asa ]; then
 	is_ok=0
 	printf "The asa user's home directory doesn't seem to exist.\n"
@@ -60,11 +70,11 @@ else
 		is_ok=0
 		printf "The asa user's home directory is incorrectly set to %s\n" "$c"
 		printf "You will need to delete it and recreate it.\n"
-	elif [ "$d" != "/usr/local/bin/asabin" ]; then
+	elif [ "$d" != "$PREFIX/bin/asabin" ]; then
 		is_ok=0
 		printf "The asa user's shell is incorrectly set to %s\n" "$d"
 		printf "Fix it with this command:\n"
-		printf '\n\tusermod asa -s /usr/local/bin/asabin\n'
+		printf '\n\tusermod asa -s $PREFIX/bin/asabin\n'
 	fi
 fi
 

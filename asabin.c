@@ -3,10 +3,15 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define MOCKDEVICES_PREFIX "/usr/local" /* prefix match
+*/
+
 const char *shellexec = "asash";
-const char *absshellexec = "/opt/local/bin/asash";
+const char *absshellexec = MOCKDEVICES_PREFIX \
+"/bin/asash";
 #ifdef __MACH__
-const char *searchpath = "/usr/local/bin:/opt/local/bin:/opt/bin:/usr/bin:/bin:/usr/sbin:/sbin:.";
+const char *searchpath = MOCKDEVICES_PREFIX \
+"/bin:/opt/bin:/usr/bin:/bin:/usr/sbin:/sbin:.";
 #endif
 
 int main(int argc, char *argv[]) {
