@@ -588,5 +588,6 @@ Error executing command
 
 
 def asa_hash(ace):
+    print(ace)
     return str(hex(binascii.crc32(ace.encode())))
     # return '0x{:02x}'.format(hash(ace) % pow(2, 32))

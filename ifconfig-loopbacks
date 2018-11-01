@@ -45,6 +45,9 @@ elif [ "$1" == "--version" ]; then
 	exit 0
 fi
 
+printf "This script is deprecated.\n"
+exit 1
+
 a=127
 b=200
 c=2

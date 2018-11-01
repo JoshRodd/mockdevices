@@ -7,6 +7,7 @@
 OPERATION=install
 NEWSHELL=""
 SHELLSFILE="/etc/xinetd.d/asa-ssh"
+DRY_RUN=0
 local_ip=$(grep "$(hostname)" /etc/hosts | awk '{print $1}')
 USAGE="Usage: $0 [--uninstall | -d] [-f | --xinetd-file=/etc/xinetd.d/asa-ssh] [-i IP_ADDRESS] NUMPORTS"
 while [ "$1" != "" ]; do
@@ -15,6 +16,9 @@ while [ "$1" != "" ]; do
 		shift
 	elif [ "$1" == "--install" ]; then
 		OPERATION=install
+		shift
+	elif [ "$1" == "--dry-run" -o "$1" == "-n" ]; then
+		DRY_RUN=1
 		shift
 	elif [ "$1" == "--help" -o "$1" == "--version" ]; then
 		echo "$USAGE"
@@ -59,6 +63,11 @@ if [ "$OPERATION" == "uninstall" ]; then
 	rm "$SHELLSFILE"
 fi
 # Not already there. If installing, we need to append it to the end.
+if [ "$DRY_RUN" -eq 1 ]; then
+	SHELLSFILE_REAL="$SHELLSFILE"
+	SHELLSFILE=/tmp/asa-ssh.$$
+fi
+NEWSHELL_STORE="$NEWSHELL"
 if [ "$OPERATION" == "install" ]; then
 	curport=22001
 	local_ip_name="$(printf "%s\n" "$local_ip" | tr . _)"
@@ -86,5 +95,18 @@ EOT
 		curport="$(expr $curport + 1)"
 	done >> "$SHELLSFILE"
 fi
-service xinetd reload
-service xinetd start
+if [ "$DRY_RUN" -ne 1 ]; then
+	service xinetd reload
+	service xinetd start
+else
+	cmp "$SHELLSFILE_REAL" "$SHELLSFILE" >/dev/null
+	if [ $? -ne 0 ]; then
+		rm "$SHELLSFILE"
+		echo The current xinetd installation needs updated.
+		echo Please run this command:
+		printf "\t%s %d\n" "$0" "$NEWSHELL_STORE"
+		exit 1
+	fi
+	rm "$SHELLSFILE"
+fi
+exit 0
