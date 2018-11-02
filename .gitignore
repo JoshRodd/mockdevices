@@ -1,9 +1,11 @@
 test_asa.conf
 conf-*.txt
 mockdevices_dist.tar.bz2
+setup-mockdevices*
 
 # Local binaries
 bin/
+distd/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

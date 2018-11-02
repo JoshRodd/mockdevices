@@ -8,6 +8,7 @@ OPERATION=install
 NEWSHELL=""
 SHELLSFILE="/etc/xinetd.d/asa-ssh"
 DRY_RUN=0
+QUIET=0
 local_ip=$(grep "$(hostname)" /etc/hosts | awk '{print $1}')
 USAGE="Usage: $0 [--uninstall | -d] [-f | --xinetd-file=/etc/xinetd.d/asa-ssh] [-i IP_ADDRESS] NUMPORTS"
 while [ "$1" != "" ]; do
@@ -32,6 +33,9 @@ while [ "$1" != "" ]; do
 			exit 1
 		fi
 		exit 0
+	elif [ "$1" == "-q" -o "$1" == "--quiet" ]; then
+		shift
+		QUIET=1
 	elif [ "$1" == "-f" -a "$2" != "" ]; then
 		shift
 		SHELLSFILE="$1"
@@ -49,18 +53,20 @@ while [ "$1" != "" ]; do
 	fi
 done
 
-if [ "$NEWSHELL" == "" ]; then
+if [ "$NEWSHELL" == "" -a "$OPERATION" != "uninstall" ]; then
 	echo "$USAGE" >&2
 	exit 1
 fi
 
-if [ "$NEWSHELL" -lt 0 -o "$NEWSHELL" -gt 999 ]; then
-	echo "Number of ports is limited to 1 through 999." >&2
-	exit 1
+if [ "$OPERATION" != "uninstall" ]; then
+	if [ "$NEWSHELL" -lt 0 -o "$NEWSHELL" -gt 999 ]; then
+		echo "Number of ports is limited to 1 through 999." >&2
+		exit 1
+	fi
 fi
 
 if [ "$OPERATION" == "uninstall" ]; then
-	rm "$SHELLSFILE"
+	rm -f "$SHELLSFILE"
 fi
 # Not already there. If installing, we need to append it to the end.
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -96,15 +102,20 @@ EOT
 	done >> "$SHELLSFILE"
 fi
 if [ "$DRY_RUN" -ne 1 ]; then
+	if [ "$OPERATION" == "uninstall" ]; then
+		printf "Terminating xinetd\n"
+	fi
 	service xinetd reload
 	service xinetd start
 else
-	cmp "$SHELLSFILE_REAL" "$SHELLSFILE" >/dev/null
+	cmp "$SHELLSFILE_REAL" "$SHELLSFILE" >/dev/null 2>/dev/null
 	if [ $? -ne 0 ]; then
 		rm "$SHELLSFILE"
-		echo The current xinetd installation needs updated.
-		echo Please run this command:
-		printf "\t%s %d\n" "$0" "$NEWSHELL_STORE"
+		if [ "$QUIET" != 1 ]; then
+			echo The current xinetd installation needs updated.
+			echo Please run this command:
+			printf "\t%s %d\n" "$0" "$NEWSHELL_STORE"
+		fi
 		exit 1
 	fi
 	rm "$SHELLSFILE"

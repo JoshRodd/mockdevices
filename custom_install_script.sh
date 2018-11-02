@@ -1,3 +1,5 @@
-echo Placeholder:
-echo We should run /usr/local/bin/mockdevices_check_install.sh --prequisites
-echo at this point.
+mockdevices_check_install.sh --install
+if [ $? -ne 0 ]; then
+	printf "Package installation failed.\n"
+	exit 1
+fi
