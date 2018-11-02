@@ -75,7 +75,7 @@ uninstall:
 	rm -f "$(PREFIX)/bin/"mockdevices_requirements.txt
 
 clean:
-	rm -rf *.dSYM bin/ dist/ asabin distd/
+	rm -rf *.dSYM bin/ dist/ asabin distd/ *.run *.bz2
 
 TITLE_PLACE_HOLDER=__TITLE_PLACE_HOLDER__
 MD5SUM_PLACEHOLDER=__MD5SUM_PLACE_HOLDER__
