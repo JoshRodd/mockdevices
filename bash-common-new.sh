@@ -1,15 +1,5 @@
-#!/bin/bash
-
-# macOS-compatible version of bash-common.sh
-
-#The following variables can be appended to in the including script:
-#PS_FOLDERS (e.g. PS_FOLDERS+=(folder_a folder_b)
-
-
-#Strings
 DEFAULT_LOG_LEVEL="WARNING"
 LOG_DOMAINS="common helpers reports requests mail sql third_party xml web"
-PS_WEB_SERVICE="tufin-ps-web"
 PYTHON_MAJOR_VERSION="3.4"
 PYTHON_MINOR_VERSION="2"
 TOMCAT_USER="tomcat"
@@ -22,13 +12,9 @@ TITLE="__TITLE_PLACE_HOLDER__"
 PS_LIB_VERSION=__PS_LIB_VERSION_PLACE_HOLDER__
 EASY_INSTALL_STRING="import sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)"
 
-
-
-#Paths
 PS_INSTALL_DIR="/"
 WEB_ENABLED_FILE="${PS_INSTALL_DIR}/conf/WEB_ENABLED"
 INSTALL_LOG="${PS_INSTALL_DIR}/install.log"
-LD_CONFIG_FILE="/etc/ld.so.conf.d/tufin_ps.conf"
 PS_LOG_DIR="/var/log/ps"
 PS_DB_DIR="/var/cache/ps/db"
 
@@ -49,7 +35,6 @@ ST_DIR="${PS_INSTALL_DIR}/st"
 PS_LOCAL_ST_DIR="${PS_INSTALL_DIR}/local_st"
 OS_LOCAL_ST_DIR="/usr/local/st"
 
-#Commands
 shopt -s extglob
 ORIGINAL_USER=$(logname)
 RPM_EXISTS=$(which rpm >> ${INSTALL_LOG} 2>&1;echo $?)
@@ -72,16 +57,17 @@ get_current_installed_version() {
 
 detect_script_package_path_and_size()
 {
-    SOURCE="${BASH_SOURCE[0]}"
-    while [ -h "${SOURCE}" ]; do
-        INSTALL_SCRIPT_DIR="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"
-        SOURCE="$(readlink --canonicalize --no-newline "${SOURCE}")"
-        [[ ${SOURCE} != /* ]] && SOURCE="${INSTALL_SCRIPT_DIR}/${SOURCE}"
+    SOURCE0="$B_SOURCE"
+#    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "${B_SOURCE}" ]; do
+        INSTALL_SCRIPT_DIR="$( cd -P "$( dirname "${B_SOURCE}" )" && pwd )"
+        B_SOURCE="$(readlink --canonicalize --no-newline "${B_SOURCE}")"
+        [[ ${B_SOURCE} != /* ]] && B_SOURCE="${INSTALL_SCRIPT_DIR}/${B_SOURCE}"
     done
-    INSTALL_SCRIPT_DIR="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"
+    INSTALL_SCRIPT_DIR="$( cd -P "$( dirname "${B_SOURCE}" )" && pwd )"
 
     #remember our file name
-    INSTALL_SCRIPT_FILE=${INSTALL_SCRIPT_DIR}/$(basename "${0##*/}")
+    INSTALL_SCRIPT_FILE=${INSTALL_SCRIPT_DIR}/$(basename "${SOURCE0##*/}")
 
     SKIP=$(awk '/^__TARFILE_FOLLOWS__/ { print NR + 1; exit 0; }' "${INSTALL_SCRIPT_FILE}")
 }
@@ -98,7 +84,7 @@ check_hash(){
 
 check_md5sum()
 {
-    FILE_MD5SUM=$(tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | openssl dgst -md5 -binary | xxd -c 32 -p | awk '{print $1}')
+    FILE_MD5SUM=$(tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | openssl base64 -d | openssl dgst -md5 -binary | xxd -c 32 -p | awk '{print $1}')
 
     if [ "${TARGET_MD5SUM}" != "${FILE_MD5SUM}" ]
     then
@@ -111,7 +97,7 @@ check_md5sum()
 
 check_sha256sum()
 {
-    FILE_SHA256SUM=$(tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | openssl dgst -sha256 -binary | xxd -c 32 -p | awk '{print $1}')
+    FILE_SHA256SUM=$(tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | openssl base64 -d | openssl dgst -sha256 -binary | xxd -c 32 -p | awk '{print $1}')
 
     if [ "${TARGET_SHA256SUM}" != "${FILE_SHA256SUM}" ]
     then
@@ -138,16 +124,7 @@ extract_ps_files ()
   fi
 
   print_to_log "Extracting files into ${PATH_PREFIX}${PS_INSTALL_DIR}"
-  tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | tar mxfj - -C ${PATH_PREFIX}${PS_INSTALL_DIR} &> /dev/null
-}
-
-restart_ps_web ()
-{
-  if [[ ${WEB_ENABLED} == 0 ]]; then
-    print_to_log "Restarting PS web service."
-    service ${PS_WEB_SERVICE} restart &> /dev/null
-fi
-
+  tail -n +${SKIP} "${INSTALL_SCRIPT_FILE}" | openssl base64 -d | tar mxfj - -C ${PATH_PREFIX}${PS_INSTALL_DIR} &> /dev/null
 }
 
 create_folders()
@@ -183,7 +160,7 @@ validate_root(){
 This script must be run as root.
 Try this command:
 
-	sudo $0
+	sudo $B_SOURCE
 EOT
         exit 1
     fi
@@ -192,9 +169,70 @@ EOT
 print_help ()
 {
 	cat <<EOT
-Usage: $0 [-x EXTRACT_DIR]
+Usage: $B_SOURCE [-x EXTRACT_DIR]
 
 The -x option will extract to a specific directory but not run the installer.
 EOT
 exit 0
 }
+extract_package_files ()
+{
+  PATH_PREFIX="${1}"
+  extract_ps_files "${PATH_PREFIX}"
+}
+
+OPTS=$(getopt -o fhx: --long force,help,extract-only:,uninstall -n "${B_SOURCE}" -- "$@")
+RESTART_INIT=1
+FORCE=""
+if [ $? != 0 ]
+then
+    echo "Could not parse arguments for ${B_SOURCE}"
+    exit 1
+fi
+eval set -- "$OPTS"
+
+while true
+do
+    case "${1}" in
+        -f | --force) shift
+            FORCE="--force"
+        ;;
+        -h | --help) print_help
+            shift
+        ;;
+        -x | --extract-only) EXTRACT_DEST_PREFIX="${2}"
+            shift 2
+            printf "Extracting files only to ${EXTRACT_DEST_PREFIX}${PS_INSTALL_DIR}.\n"
+            detect_script_package_path_and_size
+            check_hash
+            extract_ps_files "${EXTRACT_DEST_PREFIX}"
+            exit 0
+        ;;
+	--uninstall) shift
+            detect_script_package_path_and_size
+            check_hash
+            extract_ps_files
+            mockdevices_check_install.sh --uninstall $FORCE
+            exit
+        ;;
+        --) shift
+            break
+        ;;
+        * ) break
+        ;;
+    esac
+done
+
+
+validate_root
+
+detect_script_package_path_and_size
+check_hash
+extract_package_files
+
+mockdevices_check_install.sh --install
+if [ $? -ne 0 ]; then
+	printf "Package installation failed.\n"
+	exit 1
+fi
+exit 0

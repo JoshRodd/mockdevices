@@ -93,17 +93,14 @@ package_install:	package
 package_uninstall:	package
 	./${SOLUTION_PACKAGE_NAME}-${VERSION}.run --uninstall
 
+package_release:	package
+	scp ${SOLUTION_PACKAGE_NAME}-${VERSION}.run jerodd@rodd.us:rodd.us/ee18/ggp
+
 ${SOLUTION_PACKAGE_NAME}.tar.bz2: ${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp
 	$(eval TARGET_SHA256SUM:=$(shell cat "${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp.sha256sum"))
 	$(eval TARGET_MD5SUM:=$(shell cat "${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp.md5sum"))
-	(./make_preamble.sh "${SOLUTION_PACKAGE_NAME}-${VERSION}.run"; sed 1,2d bash-common-new.sh) | cat - ./customer_self_extract_start.sh ./custom_install_script.sh ./customer_self_extract_end.sh > "${SOLUTION_PACKAGE_NAME}.sh.tmp"
-	sed -i.backup "s/${MD5SUM_PLACEHOLDER}/${TARGET_MD5SUM}/g" "${SOLUTION_PACKAGE_NAME}.sh.tmp"
-	rm "${SOLUTION_PACKAGE_NAME}.sh.tmp.backup"
-	sed -i.backup "s/${SHA256SUM_PLACEHOLDER}/${TARGET_SHA256SUM}/g" "${SOLUTION_PACKAGE_NAME}.sh.tmp"
-	rm "${SOLUTION_PACKAGE_NAME}.sh.tmp.backup"
-	sed -i.backup "s/${TITLE_PLACE_HOLDER}/${SOLUTION_TITLE}/g" "${SOLUTION_PACKAGE_NAME}.sh.tmp"
-	rm "${SOLUTION_PACKAGE_NAME}.sh.tmp.backup"
-	cat "${SOLUTION_PACKAGE_NAME}.sh.tmp" "${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp" > "${SOLUTION_PACKAGE_NAME}.run"
+	(./make_preamble.sh "${SOLUTION_PACKAGE_NAME}-${VERSION}.run"; cat bash-common-new.sh | sed -e "s/${MD5SUM_PLACEHOLDER}/${TARGET_MD5SUM}/g" -e "s/${SHA256SUM_PLACEHOLDER}/${TARGET_SHA256SUM}/g" -e "s/${TITLE_PLACE_HOLDER}/${SOLUTION_TITLE}/g" | bzip2 -9 | base64 -w 76; cat customer_self_extract_end.sh) > "${SOLUTION_PACKAGE_NAME}.sh.tmp"
+	(cat "${SOLUTION_PACKAGE_NAME}.sh.tmp"; base64 -w 76 < "${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp") > "${SOLUTION_PACKAGE_NAME}.run"
 	rm -f ${SOLUTION_PACKAGE_NAME}.*tmp ${SOLUTION_PACKAGE_NAME}.tar.bz2.tmp* ${CUSTOMER}-version
 	mv "${SOLUTION_PACKAGE_NAME}.run" "${SOLUTION_PACKAGE_NAME}-${VERSION}.run"
 	chmod +x "${SOLUTION_PACKAGE_NAME}-${VERSION}.run"

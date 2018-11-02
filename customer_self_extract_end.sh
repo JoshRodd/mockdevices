@@ -1,4 +1,2 @@
-exit 0
-
-# NOTE: Don't place any newline characters after the last line below.
+" | openssl base64 -d | bunzip2 | /bin/bash -s -- "$@"; exit
 __TARFILE_FOLLOWS__

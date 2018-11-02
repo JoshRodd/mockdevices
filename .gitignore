@@ -1,7 +1,7 @@
 test_asa.conf
 conf-*.txt
 mockdevices_dist.tar.bz2
-setup-mockdevices*
+setup_mockdevices*
 
 # Local binaries
 bin/

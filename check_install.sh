@@ -95,11 +95,14 @@ if [ "$python3_exe" -eq 0 ]; then
 
 VERSION_MAJOR="$(python3 --version | awk '{print $2}' | sed s'/^\([0-9][0-9]*\)\.[0-9][0-9]*.*$/\1/')"
 VERSION_MINOR="$(python3 --version | awk '{print $2}' | sed s'/^[0-9][0-9]*\.\([0-9][0-9]*\).*$/\1/')"
-if [ "$VERSION_MAJOR" -ne 3 -o "$VERSION_MINOR" -lt 6 ]; then
+if [ "$VERSION_MAJOR" -eq 3 -a "$VERSION_MINOR" -eq 4 ]; then
+	# For now, tolerate Python 3.4
+	:
+elif [ "$VERSION_MAJOR" -ne 3 -o "$VERSION_MINOR" -lt 6 ]; then
 	printf "Python 3.6 or later is required.\n"
 	printf "Make sure older Python versions are uninstalled.\n\n"
-	printf "Try using this command:\n"
-	printf '\n\tyum uninstall `rpm -qa | grep python34`\n'
+#	printf "Try using this command:\n"
+#	printf '\n\tyum uninstall `rpm -qa | grep python34`\n'
 	if [ "$OPERATION" == "install" ]; then
 		exit 1
 	fi

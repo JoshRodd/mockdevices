@@ -40,7 +40,11 @@ cat <<EOT
 # Version: $SOLUTION_VERSION build $SOLUTION_BUILD on $USER@$HOSTNAME at $BUILD_TIMESTAMP
 # Runfile: $RUNFILE
 
-BUILD_RUNFILE="$RUNFILE"
-BUILD_VERSION="$SOLUTION_VERSION.$SOLUTION_BUILD.$BUILD_TIMESTAMP_SERIAL"
-
+if [ "\$1" == "--readme" ]; then cat | less <<"=========="
+EOT
+cat README-$CUSTOMER.md
+cat <<EOT
+==========
+exit 0; fi
+export B_SOURCE="\${BASH_SOURCE[0]}"; echo "
 EOT
