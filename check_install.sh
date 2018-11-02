@@ -58,6 +58,15 @@ fi
 is_ok=1
 # Check RPMs
 what_release=0
+UNAME="$(uname)"
+if [ "$UNAME" == "Darwin" ]; then
+	printf "macOS is not currently supported.\n"
+	exit 1
+elif [ "$UNAME" == "Linux" ]; then
+	:
+else
+	printf "The operating system $UAME may not be fully supported.\n"	
+fi
 cat /etc/redhat-release | grep -q 'release 7\.'
 if [ $? -eq 0 ]; then what_release='RHEL_7'; required_rpms='mockdevices_required_rpms_rhel7.txt'; fi
 cat /etc/redhat-release | grep -q 'release 6\.'
