@@ -102,3 +102,4 @@ xorg-x11-xauth
 xz
 xz-lzma-compat
 zlib-devel
+syslog-ng
