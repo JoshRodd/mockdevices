@@ -583,7 +583,7 @@ Error executing command
             return None
         else:
             print(self.hostname, ace_hash)
-            hits = self.db_cur.execute("SELECT cnt FROM hits WHERE serial=? AND hash=?", (self.hostname, ace_hash,)).fetchone()
+            hits = self.db_cur.execute("SELECT cnt FROM hits WHERE name=? AND hash=?", (self.hostname, ace_hash,)).fetchone()
             return hits[0] if hits else None
 
 

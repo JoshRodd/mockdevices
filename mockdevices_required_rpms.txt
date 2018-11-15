@@ -70,6 +70,7 @@ man
 man-pages
 mpfr
 ncurses-devel
+net-tools
 nspr-devel
 nss-devel
 nss-softokn-devel
@@ -93,6 +94,7 @@ python36u-pip
 python36u-setuptools
 redhat-rpm-config
 rpm-build
+syslog-ng
 tcp_wrappers-devel
 telnet-server
 w3m
@@ -102,4 +104,3 @@ xorg-x11-xauth
 xz
 xz-lzma-compat
 zlib-devel
-syslog-ng
